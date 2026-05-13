@@ -57,7 +57,10 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
       }
 
       if (key === "fl") return render("🛠 <b>过滤设置</b> (点击切换)", await getFilterKB(env));
-      if (["ar", "kw", "auth"].includes(key)) return render(`列表: ${key}`, await getListKB(key, env));
+      if (["ar", "kw", "auth"].includes(key)) {
+        const titleMap = { ar: "🤖 自动回复规则", kw: "🚫 屏蔽词列表", auth: "👮 协管列表" };
+        return render(titleMap[key] || `列表: ${key}`, await getListKB(key, env));
+      }
 
       if (key === "bak") {
         const bid = await getConfig("backup_group_id", env);
