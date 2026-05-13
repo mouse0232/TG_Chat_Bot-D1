@@ -13,7 +13,8 @@ import {
   SUBMIT_RL_IP_MAX,
   SUBMIT_RL_UID_MAX
 } from '../utils/constants.js';
-import { shouldCleanup, safeWaitUntil } from '../utils/helpers.js';
+import { safeWaitUntil } from '../utils/helpers.js';
+import { shouldCleanup } from '../utils/cache.js';
 
 /**
  * 检查私聊消息限流

@@ -3,7 +3,8 @@
  */
 
 import { MESSAGES_TTL_DAYS } from '../utils/constants.js';
-import { shouldCleanup, safeWaitUntil } from '../utils/helpers.js';
+import { safeWaitUntil } from '../utils/helpers.js';
+import { shouldCleanup } from '../utils/cache.js';
 import { cleanupMessages } from '../database/messages.js';
 
 /**

@@ -4,7 +4,8 @@
 
 import { markUpdateProcessed, cleanupProcessedUpdates } from '../database/updates.js';
 import { PROCESSED_UPDATES_TTL_MS } from '../utils/constants.js';
-import { shouldCleanup, safeWaitUntil } from '../utils/helpers.js';
+import { safeWaitUntil } from '../utils/helpers.js';
+import { shouldCleanup } from '../utils/cache.js';
 
 /**
  * 标记 Update 为已处理（幂等）
