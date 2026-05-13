@@ -13,7 +13,8 @@ import { relayToTopic } from '../services/relay.js';
 import { sendVerification, verifyAnswer, forceResetUserVerify } from '../services/verification.js';
 import { handleAdminConfig, handleAdminInput } from './adminConfig.js';
 import { MSG_TYPES } from '../utils/constants.js';
-import { escapeHTML, safeParse, hasLock, setLock } from '../utils/helpers.js';
+import { escapeHTML, safeParse } from '../utils/helpers.js';
+import { hasLock, setLock } from '../utils/cache.js';
 import { safeRegexTest } from '../security/regexGuard.js';
 
 /**

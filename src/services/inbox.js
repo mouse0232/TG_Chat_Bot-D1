@@ -6,7 +6,8 @@
 import { api } from '../api/telegram.js';
 import { getConfig, setConfig } from '../database/config.js';
 import { updateUser } from '../database/users.js';
-import { escapeHTML, getUMeta, hasLock, setLock } from '../utils/helpers.js';
+import { escapeHTML, getUMeta } from '../utils/helpers.js';
+import { hasLock, setLock } from '../utils/cache.js';
 
 /**
  * 处理未读消息通知
