@@ -1,0 +1,24 @@
+{
+  "name": "tg-chat-bot-d1",
+  "version": "4.0.0",
+  "description": "Telegram 双向机器人 - Cloudflare Worker + D1 数据库",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "cloudflare",
+    "worker",
+    "d1"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
