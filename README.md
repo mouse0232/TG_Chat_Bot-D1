@@ -42,13 +42,14 @@ src/
 │   ├── backup.js            # 备份
 │   ├── infoCard.js          # 资料卡
 │   └── verification.js      # 验证服务
-├── security/                # 安全层（6 个模块）
+├── security/                # 安全层（7 个模块）
 │   ├── webhook.js           # Webhook 校验
 │   ├── rateLimit.js         # 限流
 │   ├── idempotency.js       # 幂等去重
 │   ├── initData.js          # initData 验签
 │   ├── regexGuard.js        # ReDoS 防护
-│   └── cleanup.js           # TTL 清理
+│   ├── cleanup.js           # TTL 清理
+│   └── antiHarassment.js    # 反骚扰检测
 ├── database/                # 数据层（6 个模块）
 │   ├── index.js             # DB 初始化
 │   ├── config.js            # 配置操作
@@ -107,6 +108,12 @@ src/
 - **Update 幂等去重**：防止重复处理
 - **ReDoS 防护**：正则表达式安全检测
 - **TTL 自动清理**：过期数据自动清理
+
+### 9. 反骚扰检测
+- **用户身份检测**：拦截机器人账号（is_bot）和空用户名用户，提示"不符合聊天对象"，不拉黑
+- **Premium 白名单**：Telegram Premium 用户直接放行
+- **消息内容检测**：拦截 Bot 转发消息、带内联键盘消息、包含 @提及（mention/text_mention）的消息，提示并拉黑
+- **可配置开关**：每条检测规则可独立开关，总开关控制启用/禁用
 
 ---
 
