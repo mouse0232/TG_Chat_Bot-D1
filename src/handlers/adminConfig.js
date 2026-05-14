@@ -35,7 +35,7 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
             [{ text: "📝 基础", callback_data: "config:menu:base" }, { text: "🤖 自动回复", callback_data: "config:menu:ar" }],
             [{ text: "🚫 屏蔽词", callback_data: "config:menu:kw" }, { text: "🛠 过滤", callback_data: "config:menu:fl" }],
             [{ text: "👮 协管", callback_data: "config:menu:auth" }, { text: "💾 备份/通知", callback_data: "config:menu:bak" }],
-            [{ text: "🌙 营业状态", callback_data: "config:menu:busy" }]
+            [{ text: "🌙 营业状态", callback_data: "config:menu:busy" }, { text: "🛡 反骚扰", callback_data: "config:menu:ah" }]
           ]
         });
 
@@ -86,15 +86,36 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
           ]
         });
       }
+
+      if (key === "ah") {
+        const enabled = await getBoolConfig("enable_anti_harassment", env);
+        const blockBot = await getBoolConfig("anti_harassment_block_bot", env);
+        const blockNoUname = await getBoolConfig("anti_harassment_block_no_username", env);
+        const allowPremium = await getBoolConfig("anti_harassment_allow_premium", env);
+        const blockBotFwd = await getBoolConfig("anti_harassment_block_bot_forward", env);
+        const blockInline = await getBoolConfig("anti_harassment_block_inline_keyboard", env);
+        const blockMention = await getBoolConfig("anti_harassment_block_mention", env);
+        const t = (v) => v ? "✅" : "❌";
+        return render(`🛡 <b>反骚扰检测</b>\n总开关: ${t(enabled)}\n\n<b>用户身份检测</b> (触发提示，不拉黑)\nBot账号: ${t(blockBot)}\n空用户名: ${t(blockNoUname)}\nPremium放行: ${t(allowPremium)}\n\n<b>消息内容检测</b> (触发提示+拉黑)\nBot转发: ${t(blockBotFwd)}\n内联键盘: ${t(blockInline)}\n@提及: ${t(blockMention)}`, {
+          inline_keyboard: [
+            [{ text: `总开关: ${t(enabled)}`, callback_data: `config:toggle:enable_anti_harassment:${!enabled}` }],
+            [{ text: `Bot账号: ${t(blockBot)}`, callback_data: `config:toggle:anti_harassment_block_bot:${!blockBot}` }, { text: `空用户名: ${t(blockNoUname)}`, callback_data: `config:toggle:anti_harassment_block_no_username:${!blockNoUname}` }],
+            [{ text: `Premium放行: ${t(allowPremium)}`, callback_data: `config:toggle:anti_harassment_allow_premium:${!allowPremium}` }],
+            [{ text: `Bot转发: ${t(blockBotFwd)}`, callback_data: `config:toggle:anti_harassment_block_bot_forward:${!blockBotFwd}` }, { text: `内联键盘: ${t(blockInline)}`, callback_data: `config:toggle:anti_harassment_block_inline_keyboard:${!blockInline}` }],
+            [{ text: `@提及: ${t(blockMention)}`, callback_data: `config:toggle:anti_harassment_block_mention:${!blockMention}` }],
+            [back]
+          ]
+        });
+      }
     }
 
     if (type === "toggle") {
       await setConfig(key, val, env);
-      return key === "busy_mode"
-        ? handleAdminConfig(cid, mid, "menu", "busy", null, env)
-        : key === "enable_qa_verify"
-          ? handleAdminConfig(cid, mid, "menu", "base", null, env)
-          : render("🛠 <b>过滤设置</b>", await getFilterKB(env));
+      const ahKeys = ["enable_anti_harassment", "anti_harassment_block_bot", "anti_harassment_block_no_username", "anti_harassment_allow_premium", "anti_harassment_block_bot_forward", "anti_harassment_block_inline_keyboard", "anti_harassment_block_mention"];
+      if (key === "busy_mode") return handleAdminConfig(cid, mid, "menu", "busy", null, env);
+      if (key === "enable_qa_verify") return handleAdminConfig(cid, mid, "menu", "base", null, env);
+      if (ahKeys.includes(key)) return handleAdminConfig(cid, mid, "menu", "ah", null, env);
+      return render("🛠 <b>过滤设置</b>", await getFilterKB(env));
     }
 
     if (type === "cl") {
