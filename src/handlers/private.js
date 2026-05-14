@@ -16,6 +16,7 @@ import { MSG_TYPES } from '../utils/constants.js';
 import { escapeHTML, safeParse } from '../utils/helpers.js';
 import { hasLock, setLock } from '../utils/cache.js';
 import { safeRegexTest } from '../security/regexGuard.js';
+import { checkUser, handleUserIntercept, checkMessage, handleMessageIntercept } from '../security/antiHarassment.js';
 
 /**
  * 处理私聊消息
@@ -30,6 +31,15 @@ export async function handlePrivate(msg, env, ctx) {
 
   // 先取用户，保证 block 生效是 DB 真实状态
   const u0 = await getUser(id, env);
+
+  // 反骚扰用户检测（非管理员）
+  if (!(await isAuthAdmin(id, env))) {
+    const userCheck = await checkUser(msg.from, env);
+    if (userCheck.triggered) {
+      await handleUserIntercept(id, userCheck.reason, env);
+      return;
+    }
+  }
   
   // 屏蔽用户处理
   if (u0.is_blocked && !(await isAuthAdmin(id, env))) {
@@ -215,6 +225,13 @@ async function handleVerifiedMsg(msg, u, env, ctx) {
 
   // 保险：若中途被屏蔽（并发情况下），直接终止
   if (u.is_blocked && !(await isAuthAdmin(id, env))) return;
+
+  // 反骚扰消息检测
+  const msgCheck = await checkMessage(msg, env);
+  if (msgCheck.triggered) {
+    await handleMessageIntercept(id, msg.from, msgCheck.reason, env);
+    return;
+  }
 
   const text = msg.text || msg.caption || "";
 

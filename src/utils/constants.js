@@ -56,7 +56,16 @@ export const DEFAULTS = {
   busy_msg: "当前是非营业时间，消息已收到，管理员稍后回复。",
   block_keywords: "[]",
   keyword_responses: "[]",
-  authorized_admins: "[]"
+  authorized_admins: "[]",
+
+  // 反骚扰功能
+  enable_anti_harassment: "true",
+  anti_harassment_block_bot: "true",
+  anti_harassment_block_no_username: "true",
+  anti_harassment_allow_premium: "true",
+  anti_harassment_block_bot_forward: "true",
+  anti_harassment_block_inline_keyboard: "true",
+  anti_harassment_block_mention: "true"
 };
 
 // 已送达 reaction
