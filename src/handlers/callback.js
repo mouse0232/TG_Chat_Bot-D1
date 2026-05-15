@@ -38,11 +38,13 @@ export async function handleCallback(cb, env) {
   }
 
   if (act === "config") {
+    console.log("[CONFIG] callback data:", data, "parsed:", { t, k, v });
     if (!(await isPrimaryAdmin(from.id, env))) {
       return api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "无权", show_alert: true }).catch(() => {});
     }
     await api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id }).catch(() => {});
     const [, t, k, v] = (data || "").split(":");
+    console.log("[CONFIG] calling handleAdminConfig with:", { type: t, key: k, val: v });
     return handleAdminConfig(msg.chat.id, msg.message_id, t, k, v, env);
   }
 
