@@ -19,3 +19,8 @@ database_id = "95fa01fc-0dcc-40bb-9d88-09d1ad2d336c"
 # RECAPTCHA_SITE_KEY = "your-recaptcha-site-key"
 # RECAPTCHA_SECRET_KEY = "your-recaptcha-secret-key"
 # TELEGRAM_WEBHOOK_SECRET = "your-webhook-secret"
+
+# 日志收集和追踪配置
+[observability]
+enabled = true
+head_sampling_rate = 0.1  # 10% 采样率，平衡调试需求和性能开销
