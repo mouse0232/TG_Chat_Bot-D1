@@ -1,4 +1,4 @@
-name = "tg-chat-bot-d1"
+name = "tgchatbotd1"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
