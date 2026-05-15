@@ -122,7 +122,7 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
             [{ text: `总开关: ${t(aiEnabled)}${!llmReady && !aiEnabled ? " (需先配置LLM)" : ""}`, callback_data: `config:toggle:enable_ai_anti_harassment:${!aiEnabled}` }],
             [{ text: `信任阈值: ${threshold}`, callback_data: `config:edit:ai_anti_harassment_trust_threshold` }],
             [{ text: `加信通知: ${t(notifyAuto)}`, callback_data: `config:toggle:ai_anti_harassment_notify_auto_whitelist:${!notifyAuto}` }],
-            [{ text: "\u{1F50D} \u68C0\u6D4B\u8FDE\u901A\u6027", callback_data: "config:check_ai" }],
+            [{ text: "\u{1F50D} \u68C0\u6D4B\u8FDE\u901A\u6027", callback_data: "config:check:ai" }],
             [back]
           ]
         });
@@ -143,7 +143,7 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
             [{ text: `信任阈值: ${threshold}`, callback_data: `config:edit:tencent_tms_trust_threshold` }],
             [{ text: `Review阈值: ${reviewThreshold}`, callback_data: `config:edit:tencent_tms_review_block_threshold` }],
             [{ text: `加信通知: ${t(notifyAuto)}`, callback_data: `config:toggle:tencent_tms_notify_auto_whitelist:${!notifyAuto}` }],
-            [{ text: "🔍 检测连通性", callback_data: "config:check_tms" }],
+            [{ text: "🔍 检测连通性", callback_data: "config:check:tms" }],
             [back]
           ]
         });
