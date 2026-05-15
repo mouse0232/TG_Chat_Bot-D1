@@ -18,7 +18,6 @@ import { handleAdminConfig } from './adminConfig.js';
 export async function handleCallback(cb, env) {
   const { data, message: msg, from } = cb;
   const [act, p1, p2] = (data || "").split(":");
-  console.log("[CALLBACK] received:", data, "from:", from.id, "chat:", msg?.chat?.id);
 
   if (act === "inbox" && p1 === "del") {
     await api(env.BOT_TOKEN, "deleteMessage", { chat_id: msg.chat.id, message_id: msg.message_id }).catch(() => {});
@@ -39,14 +38,11 @@ export async function handleCallback(cb, env) {
   }
 
   if (act === "config") {
-    const isAdmin = await isPrimaryAdmin(from.id, env);
-    console.log("[CONFIG] user", from.id, "isAdmin:", isAdmin, "data:", data);
-    if (!isAdmin) {
+    if (!(await isPrimaryAdmin(from.id, env))) {
       return api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "无权", show_alert: true }).catch(() => {});
     }
     await api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id }).catch(() => {});
     const [, t, k, v] = (data || "").split(":");
-    console.log("[CONFIG] parsed:", { type: t, key: k, val: v });
     return handleAdminConfig(msg.chat.id, msg.message_id, t, k, v, env);
   }
 

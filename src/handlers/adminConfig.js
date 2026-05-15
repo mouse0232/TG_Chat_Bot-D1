@@ -150,11 +150,8 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
       }
       
       if (type === "check") {
-        console.log("[CHECK] type=check, key=", key);
         if (key === "ai") {
-          console.log("[CHECK_AI] starting connectivity check");
           const result = await checkAiConnectivity(env);
-          console.log("[CHECK_AI] result:", result);
           if (result.ok) {
             return render(`\u{1F916} AI \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF6\u65F6: ${result.latencyMs}ms\nLLM API \u53EF\u6B63\u5E38\u8C03\u7528`, {
               inline_keyboard: [[{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }]]
@@ -166,9 +163,7 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
         }
 
         if (key === "tms") {
-          console.log("[CHECK_TMS] starting connectivity check");
           const result = await checkTmsConnectivity(env);
-          console.log("[CHECK_TMS] result:", result);
           if (result.ok) {
             const detail = result.label ? `\nLabel: ${result.label}\nSuggestion: ${result.suggestion}` : "";
             return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF6\u65F6: ${result.latencyMs}ms${detail}\nTMS API \u53EF\u6B63\u5E38\u8C03\u7528`, {
