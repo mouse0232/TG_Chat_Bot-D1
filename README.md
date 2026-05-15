@@ -42,7 +42,7 @@ src/
 │   ├── backup.js            # 备份
 │   ├── infoCard.js          # 资料卡
 │   └── verification.js      # 验证服务
-├── security/                # 安全层（9 个模块）
+├── security/                # 安全层（11 个模块）
 │   ├── webhook.js           # Webhook 校验
 │   ├── rateLimit.js          # 限流
 │   ├── idempotency.js        # 幂等去重
@@ -51,7 +51,9 @@ src/
 │   ├── cleanup.js            # TTL 清理
 │   ├── antiHarassment.js     # 本地反骚扰检测
 │   ├── aiAntiHarassment.js   # AI 反骚扰检测
-│   └── aiSpamPrompt.js       # LLM 提示词模板
+│   ├── aiSpamPrompt.js       # LLM 提示词模板
+│   ├── tmsAntiHarassment.js  # TMS 反骚扰检测
+│   └── tencentTms.js         # TMS API 签名+调用
 ├── database/                # 数据层（7 个模块）
 │   ├── index.js              # DB 初始化
 │   ├── config.js             # 配置操作
@@ -59,7 +61,7 @@ src/
 │   ├── messages.js           # 消息操作
 │   ├── updates.js            # Update 记录
 │   ├── rateLimits.js          # 限流记录
-│   └── trust.js              # AI 信任数据
+│   └── trust.js              # AI/TMS 信任数据（共享）
 ├── api/                     # API 层（2 个模块）
 │   ├── telegram.js          # TG API 封装
 │   └── commands.js          # 命令管理
@@ -112,6 +114,7 @@ src/
 - **ReDoS 防护**：正则表达式安全检测
 - **TTL 自动清理**：过期数据自动清理
 - **AI 反骚扰 fail-open**：LLM 不可用时放行消息，不误杀
+- **TMS 反骚扰 fail-open**：腾讯 TMS 不可用时放行消息，不误杀
 
 ### 9. 本地反骚扰检测
 - **用户身份检测**：拦截机器人账号（is_bot）和空用户名用户，提示"不符合聊天对象"，不拉黑
@@ -121,11 +124,21 @@ src/
 
 ### 10. AI 反骚扰检测
 - **LLM 语义检测**：调用 OpenAI Compatible API 识别广告、诈骗、钓鱼等语义层面垃圾信息
-- **AI 信任列表**：用户当日连续通过 N 次 AI 检测后加入信任列表，当日免检，降低 API 成本
+- **信任列表**：用户当日连续通过 N 次 AI 检测后加入信任列表，当日免检，降低 API 成本
 - **每日重置**：信任仅当日有效，第二天归零重新积累
-- **与黑白名单解耦**：AI 信任列表仅控制是否跳过 AI 检测，与项目黑名单（is_blocked）完全独立
+- **与黑白名单解耦**：信任列表仅控制是否跳过检测，与项目黑名单（is_blocked）完全独立
 - **fail-open 策略**：AI 不可用或超时时放行消息，不误杀
-- **管理员命令**：`/trust` 加入 AI 信任列表，`/untrust` 移出
+- **管理员命令**：`/trust` 加入信任列表，`/untrust` 移出
+- **与 TMS 互斥**：开启 AI 时自动关闭 TMS，两者不能同时启用
+
+### 11. TMS 反骚扰检测
+- **腾讯云 TextModeration API**：毫秒级响应，远优于 AI 反骚扰的 1-5 秒延迟
+- **多维度覆盖**：色情、暴恐、违法、谩骂、广告、灌水、涉政等违规类型
+- **Review 阈值拦截**：Suggestion 为 Review 且 Score >= 阈值（默认 60）时拦截，避免误杀
+- **信任列表共享**：与 AI 反骚扰共享同一套 `user_trust` 表和信任机制，切换检测方式时信任数据不受影响
+- **与 AI 互斥**：开启 TMS 时自动关闭 AI，反之亦然，管理面板双重保证
+- **fail-open 策略**：TMS 不可用或超时时放行消息，不误杀
+- **管理员命令**：`/trust` 加入信任列表，`/untrust` 移出（与 AI 共享）
 
 ---
 
@@ -188,6 +201,10 @@ src/
    | `LLM_MODEL` | `gpt-4o-mini` | LLM 模型名称（AI反骚扰可选）|
    | `LLM_KEY` | `sk-...` | LLM API Key（用 wrangler secret put 设置）|
    | `LLM_TIMEOUT_MS` | `5000` | LLM API 超时（毫秒，可选）|
+    | `TENCENT_SECRET_ID` | `AKIDz8krbsJ5...` | 腾讯云 API SecretId（TMS反骚扰可选）|
+    | `TENCENT_SECRET_KEY` | `Gu5t9geU...` | 腾讯云 API SecretKey（用 wrangler secret put 设置）|
+    | `TENCENT_TMS_REGION` | `ap-guangzhou` | TMS API 地域（可选，默认 ap-guangzhou）|
+    | `TENCENT_TMS_TIMEOUT_MS` | `3000` | TMS API 超时（毫秒，可选）|
 
 7. **设置 Webhook**
    在浏览器地址栏输入：
@@ -223,6 +240,8 @@ npx wrangler secret put ADMIN_GROUP_ID
 npx wrangler secret put WORKER_URL
 npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
 npx wrangler secret put LLM_KEY
+npx wrangler secret put TENCENT_SECRET_ID
+npx wrangler secret put TENCENT_SECRET_KEY
 # ... 其他变量
 
 # 5. 本地开发
@@ -270,6 +289,8 @@ npm run deploy
 | `点击配置菜单出现 ERROR` | D1 数据库未绑定或变量名错误 | 1. 检查绑定变量名是否为 `TG_BOT_DB`（大小写敏感）<br>2. 确认数据库已正确创建<br>3. 首次访问会自动建表，无需手动执行 SQL |
 | `点击配置菜单无反应` | D1 数据库配置错误 | 1. 重新绑定数据库<br>2. 检查 Worker 代码是否包含最新 D1 初始化逻辑 |
 | `AI 检测不工作` | LLM 环境变量未配置 | 1. 检查 `LLM_API`/`LLM_MODEL`/`LLM_KEY` 是否配置<br>2. 确认管理面板中 AI 反骚扰总开关已开启<br>3. 检查 `LLM_KEY` 是否有效（用 curl 测试）|
+| `TMS 检测不工作` | 腾讯云密钥未配置 | 1. 检查 `TENCENT_SECRET_ID`/`TENCENT_SECRET_KEY` 是否配置<br>2. 确认管理面板中 TMS 反骚扰总开关已开启<br>3. 确认腾讯云 TMS 服务已开通（内容安全控制台）|
+| `AI 和 TMS 同时开启` | 互斥控制 | 开启其中一个时系统自动关闭另一个，管理面板也有互斥校验 |
 
 ---
 

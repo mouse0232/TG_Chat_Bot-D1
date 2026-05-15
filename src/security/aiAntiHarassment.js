@@ -41,7 +41,7 @@ export async function checkAiSpam(msg, user, env) {
   }
 }
 
-async function callLlmApi(env, systemPrompt, userPrompt) {
+export async function callLlmApi(env, systemPrompt, userPrompt) {
   const baseUrl = env.LLM_API || 'https://api.openai.com/v1';
   const timeout = parseInt(env.LLM_TIMEOUT_MS) || 5000;
 

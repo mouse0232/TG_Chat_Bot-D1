@@ -18,6 +18,7 @@ import { hasLock, setLock } from '../utils/cache.js';
 import { safeRegexTest } from '../security/regexGuard.js';
 import { checkUser, handleUserIntercept, checkMessage, handleMessageIntercept } from '../security/antiHarassment.js';
 import { checkAiSpam, handleAiSpamIntercept, handleAiCleanPass } from '../security/aiAntiHarassment.js';
+import { checkTmsSpam, handleTmsSpamIntercept, handleTmsCleanPass } from '../security/tmsAntiHarassment.js';
 
 /**
  * 处理私聊消息
@@ -234,6 +235,30 @@ async function handleVerifiedMsg(msg, u, env, ctx) {
     return;
   }
 
+  const tmsEnabled = await getBoolConfig("enable_tencent_tms", env);
+  const aiEnabled = await getBoolConfig("enable_ai_anti_harassment", env);
+
+  if (tmsEnabled) {
+    const tmsCheck = await checkTmsSpam(msg, u, env);
+    if (tmsCheck.spam) {
+      await handleTmsSpamIntercept(id, msg.from, tmsCheck.reason, tmsCheck.label, tmsCheck.score, env);
+      return;
+    }
+    if (!tmsCheck.skipped && !tmsCheck.error) {
+      const promoted = await handleTmsCleanPass(id, env);
+      if (promoted) {
+        const notify = await getBoolConfig("tencent_tms_notify_auto_whitelist", env);
+        if (notify && env.ADMIN_GROUP_ID) {
+          const senderName = msg.from?.first_name || 'Unknown';
+          const threshold = await getConfig("tencent_tms_trust_threshold", env) || 3;
+          await api(env.BOT_TOKEN, "sendMessage", {
+            chat_id: env.ADMIN_GROUP_ID,
+            text: `\u2705 \u7528\u6237 ${senderName} \u5F53\u65E5\u8FDE\u7EED\u901A\u8FC7 ${threshold} \u6B21 TMS \u68C0\u6D4B\uFF0C\u5DF2\u52A0\u5165\u4FE1\u4EFB\u5217\u8868\uFF08\u5F53\u65E5\u514D\u68C0\uFF09`
+          }).catch(() => {});
+        }
+      }
+    }
+  } else if (aiEnabled) {
   const aiCheck = await checkAiSpam(msg, u, env);
   if (aiCheck.spam) {
     await handleAiSpamIntercept(id, msg.from, aiCheck.reason, env);
@@ -252,6 +277,7 @@ async function handleVerifiedMsg(msg, u, env, ctx) {
         }).catch(() => {});
       }
     }
+  }
   }
 
   const text = msg.text || msg.caption || "";

@@ -46,8 +46,8 @@ export async function recordSpam(userId, env) {
   ).bind(today, 'monitoring', Date.now(), userId).run();
 }
 
-export async function checkAndPromoteToWhitelist(userId, env) {
-  const threshold = parseInt(await getConfig("ai_anti_harassment_trust_threshold", env)) || 3;
+export async function checkAndPromoteToWhitelist(userId, env, customThreshold) {
+  const threshold = customThreshold || parseInt(await getConfig("ai_anti_harassment_trust_threshold", env)) || 3;
   const trust = await getUserTrust(userId, env);
   if (!trust) return false;
   if (trust.trust_status === 'trusted') return false;

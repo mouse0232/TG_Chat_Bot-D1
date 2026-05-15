@@ -69,7 +69,12 @@ export const DEFAULTS = {
 
   enable_ai_anti_harassment: "false",
   ai_anti_harassment_trust_threshold: "3",
-  ai_anti_harassment_notify_auto_whitelist: "true"
+  ai_anti_harassment_notify_auto_whitelist: "true",
+
+  enable_tencent_tms: "false",
+  tencent_tms_trust_threshold: "3",
+  tencent_tms_review_block_threshold: "60",
+  tencent_tms_notify_auto_whitelist: "true"
 };
 
 // 已送达 reaction
