@@ -9,6 +9,7 @@ import { getUserByTopicId } from '../database/users.js';
 import { isAuthAdmin } from '../utils/cache.js';
 import { safeParse } from '../utils/helpers.js';
 import { updateUser } from '../database/users.js';
+import { trustUser, untrustUser } from '../database/trust.js';
 
 /**
  * 处理管理员回复
@@ -55,6 +56,26 @@ export async function handleAdminReply(msg, env) {
 
   const uid = (await getUserByTopicId(msg.message_thread_id.toString(), env))?.user_id;
   if (!uid) return;
+
+  const text = msg.text || "";
+
+  if (text === '/trust') {
+    await trustUser(uid, 'admin', env);
+    return api(env.BOT_TOKEN, "sendMessage", {
+      chat_id: msg.chat.id,
+      message_thread_id: msg.message_thread_id,
+      text: "✅ 用户已加入 AI 信任列表（当日免检）"
+    });
+  }
+
+  if (text === '/untrust') {
+    await untrustUser(uid, env);
+    return api(env.BOT_TOKEN, "sendMessage", {
+      chat_id: msg.chat.id,
+      message_thread_id: msg.message_thread_id,
+      text: "⚠️ 用户已移出 AI 信任列表，重新进入 AI 检测"
+    });
+  }
 
   try {
     await api(env.BOT_TOKEN, "copyMessage", { chat_id: uid, from_chat_id: msg.chat.id, message_id: msg.message_id });

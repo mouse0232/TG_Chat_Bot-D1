@@ -17,6 +17,7 @@ import { escapeHTML, safeParse } from '../utils/helpers.js';
 import { hasLock, setLock } from '../utils/cache.js';
 import { safeRegexTest } from '../security/regexGuard.js';
 import { checkUser, handleUserIntercept, checkMessage, handleMessageIntercept } from '../security/antiHarassment.js';
+import { checkAiSpam, handleAiSpamIntercept, handleAiCleanPass } from '../security/aiAntiHarassment.js';
 
 /**
  * 处理私聊消息
@@ -231,6 +232,26 @@ async function handleVerifiedMsg(msg, u, env, ctx) {
   if (msgCheck.triggered) {
     await handleMessageIntercept(id, msg.from, msgCheck.reason, env);
     return;
+  }
+
+  const aiCheck = await checkAiSpam(msg, u, env);
+  if (aiCheck.spam) {
+    await handleAiSpamIntercept(id, msg.from, aiCheck.reason, env);
+    return;
+  }
+  if (!aiCheck.skipped && !aiCheck.error) {
+    const promoted = await handleAiCleanPass(id, env);
+    if (promoted) {
+      const notify = await getBoolConfig("ai_anti_harassment_notify_auto_whitelist", env);
+      if (notify && env.ADMIN_GROUP_ID) {
+        const senderName = msg.from?.first_name || 'Unknown';
+        const threshold = await getConfig("ai_anti_harassment_trust_threshold", env) || 3;
+        await api(env.BOT_TOKEN, "sendMessage", {
+          chat_id: env.ADMIN_GROUP_ID,
+          text: `✅ 用户 ${senderName} 当日连续通过 ${threshold} 次 AI 检测，已加入 AI 信任列表（当日免检）`
+        }).catch(() => {});
+      }
+    }
   }
 
   const text = msg.text || msg.caption || "";

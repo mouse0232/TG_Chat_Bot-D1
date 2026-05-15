@@ -65,7 +65,11 @@ export const DEFAULTS = {
   anti_harassment_allow_premium: "true",
   anti_harassment_block_bot_forward: "true",
   anti_harassment_block_inline_keyboard: "true",
-  anti_harassment_block_mention: "true"
+  anti_harassment_block_mention: "true",
+
+  enable_ai_anti_harassment: "false",
+  ai_anti_harassment_trust_threshold: "3",
+  ai_anti_harassment_notify_auto_whitelist: "true"
 };
 
 // 已送达 reaction

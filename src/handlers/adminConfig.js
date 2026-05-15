@@ -35,7 +35,8 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
             [{ text: "📝 基础", callback_data: "config:menu:base" }, { text: "🤖 自动回复", callback_data: "config:menu:ar" }],
             [{ text: "🚫 屏蔽词", callback_data: "config:menu:kw" }, { text: "🛠 过滤", callback_data: "config:menu:fl" }],
             [{ text: "👮 协管", callback_data: "config:menu:auth" }, { text: "💾 备份/通知", callback_data: "config:menu:bak" }],
-            [{ text: "🌙 营业状态", callback_data: "config:menu:busy" }, { text: "🛡 反骚扰", callback_data: "config:menu:ah" }]
+            [{ text: "🌙 营业状态", callback_data: "config:menu:busy" }, { text: "🛡 反骚扰", callback_data: "config:menu:ah" }],
+            [{ text: "🤖 AI反骚扰", callback_data: "config:menu:aiah" }]
           ]
         });
 
@@ -96,7 +97,7 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
         const blockInline = await getBoolConfig("anti_harassment_block_inline_keyboard", env);
         const blockMention = await getBoolConfig("anti_harassment_block_mention", env);
         const t = (v) => v ? "✅" : "❌";
-        return render(`🛡 <b>反骚扰检测</b>\n总开关: ${t(enabled)}\n\n<b>用户身份检测</b> (触发提示，不拉黑)\nBot账号: ${t(blockBot)}\n空用户名: ${t(blockNoUname)}\nPremium放行: ${t(allowPremium)}\n\n<b>消息内容检测</b> (触发提示+拉黑)\nBot转发: ${t(blockBotFwd)}\n内联键盘: ${t(blockInline)}\n@提及: ${t(blockMention)}`, {
+        return render(`🛡 <b>本地反骚扰检测</b>\n总开关: ${t(enabled)}\n\n<b>用户身份检测</b> (触发提示，不拉黑)\nBot账号: ${t(blockBot)}\n空用户名: ${t(blockNoUname)}\nPremium放行: ${t(allowPremium)}\n\n<b>消息内容检测</b> (触发提示+拉黑)\nBot转发: ${t(blockBotFwd)}\n内联键盘: ${t(blockInline)}\n@提及: ${t(blockMention)}`, {
           inline_keyboard: [
             [{ text: `总开关: ${t(enabled)}`, callback_data: `config:toggle:enable_anti_harassment:${!enabled}` }],
             [{ text: `Bot账号: ${t(blockBot)}`, callback_data: `config:toggle:anti_harassment_block_bot:${!blockBot}` }, { text: `空用户名: ${t(blockNoUname)}`, callback_data: `config:toggle:anti_harassment_block_no_username:${!blockNoUname}` }],
@@ -107,14 +108,38 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
           ]
         });
       }
+
+      if (key === "aiah") {
+        const aiEnabled = await getBoolConfig("enable_ai_anti_harassment", env);
+        const threshold = await getConfig("ai_anti_harassment_trust_threshold", env) || 3;
+        const notifyAuto = await getBoolConfig("ai_anti_harassment_notify_auto_whitelist", env);
+        const t = (v) => v ? "✅" : "❌";
+        const llmReady = !!env.LLM_KEY;
+        const llmStatus = llmReady ? "✅ 已配置" : "❌ 未配置 LLM_KEY";
+        return render(`🤖 <b>AI 反骚扰检测</b>\n总开关: ${t(aiEnabled)}\nLLM 配置: ${llmStatus}\n信任阈值: 当日连续通过 ${threshold} 次\n加信通知: ${t(notifyAuto)}\n\n<b>说明</b>\n- AI信任列表与黑白名单<b>完全独立</b>\n- 信任仅<b>当日有效</b>，第二天重置\n- /trust /untrust 在话题中回复使用${!llmReady ? "\n\n⚠️ <b>请先配置 LLM_KEY 环境变量再开启</b>" : ""}`, {
+          inline_keyboard: [
+            [{ text: `总开关: ${t(aiEnabled)}${!llmReady && !aiEnabled ? " (需先配置LLM)" : ""}`, callback_data: `config:toggle:enable_ai_anti_harassment:${!aiEnabled}` }],
+            [{ text: `信任阈值: ${threshold}`, callback_data: `config:edit:ai_anti_harassment_trust_threshold` }],
+            [{ text: `加信通知: ${t(notifyAuto)}`, callback_data: `config:toggle:ai_anti_harassment_notify_auto_whitelist:${!notifyAuto}` }],
+            [back]
+          ]
+        });
+      }
     }
 
     if (type === "toggle") {
+      if (key === "enable_ai_anti_harassment" && val === "true" && !env.LLM_KEY) {
+        return render("❌ <b>无法开启 AI 反骚扰</b>\n\n未配置 LLM 环境变量。\n请在 Cloudflare Dashboard 或 wrangler secret 中设置以下变量后重试：\n\n<b>必需</b>:\n• LLM_KEY — LLM API Key\n\n<b>可选</b>:\n• LLM_API — API Base URL (默认 OpenAI)\n• LLM_MODEL — 模型名称 (默认 gpt-4o-mini)\n• LLM_TIMEOUT_MS — 超时毫秒数 (默认 5000)", {
+          inline_keyboard: [[{ text: "🔙 返回 AI 反骚扰", callback_data: "config:menu:aiah" }]]
+        });
+      }
       await setConfig(key, val, env);
       const ahKeys = ["enable_anti_harassment", "anti_harassment_block_bot", "anti_harassment_block_no_username", "anti_harassment_allow_premium", "anti_harassment_block_bot_forward", "anti_harassment_block_inline_keyboard", "anti_harassment_block_mention"];
+      const aiAhKeys = ["enable_ai_anti_harassment", "ai_anti_harassment_notify_auto_whitelist"];
       if (key === "busy_mode") return handleAdminConfig(cid, mid, "menu", "busy", null, env);
       if (key === "enable_qa_verify") return handleAdminConfig(cid, mid, "menu", "base", null, env);
       if (ahKeys.includes(key)) return handleAdminConfig(cid, mid, "menu", "ah", null, env);
+      if (aiAhKeys.includes(key)) return handleAdminConfig(cid, mid, "menu", "aiah", null, env);
       return render("🛠 <b>过滤设置</b>", await getFilterKB(env));
     }
 

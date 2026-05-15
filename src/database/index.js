@@ -77,7 +77,20 @@ export async function dbInit(env) {
       ts INTEGER,
       count INTEGER
     )`),
-    env.TG_BOT_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_ratelimits_ts ON ratelimits(ts)`)
+    env.TG_BOT_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_ratelimits_ts ON ratelimits(ts)`),
+
+    env.TG_BOT_DB.prepare(`CREATE TABLE IF NOT EXISTS user_trust (
+      user_id TEXT PRIMARY KEY,
+      username TEXT,
+      trust_status TEXT DEFAULT 'new',
+      consecutive_clean_count INTEGER DEFAULT 0,
+      last_clean_date TEXT,
+      total_spam_count INTEGER DEFAULT 0,
+      whitelisted_at INTEGER,
+      whitelisted_by TEXT,
+      last_message_at INTEGER,
+      created_at INTEGER
+    )`)
   ]);
 
   await ensureUserColumns(env);
