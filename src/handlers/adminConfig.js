@@ -152,29 +152,29 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
       if (type === "check") {
         if (key === "ai") {
           const result = await checkAiConnectivity(env);
-        if (result.ok) {
-          return render(`\u{1F916} AI \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529A\n\u5EF6\u65F6: ${result.latencyMs}ms\nLLM API \u53EF\u6B63\u5E38\u8C03\u7528`, {
+          if (result.ok) {
+            return render(`\u{1F916} AI \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529A\n\u5EF6\u65F6: ${result.latencyMs}ms\nLLM API \u53EF\u6B63\u5E38\u8C03\u7528`, {
+              inline_keyboard: [[{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }]]
+            });
+          }
+          return render(`\u{1F916} AI \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF6\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 LLM_KEY \u662F\u5426\u6709\u6548\n2. \u68C0\u67E5 LLM_API \u5730\u5740\u662F\u5426\u6B63\u786E\n3. \u7528 curl \u6D4B\u8BD5 API \u53EF\u8FDE\u901A`, {
             inline_keyboard: [[{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }]]
           });
         }
-        return render(`\u{1F916} AI \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF6\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 LLM_KEY \u662F\u5426\u6709\u6548\n2. \u68C0\u67E5 LLM_API \u5730\u5740\u662F\u5426\u6B63\u786E\n3. \u7528 curl \u6D4B\u8BD5 API \u53EF\u8FDE\u901A`, {
-          inline_keyboard: [[{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }]]
-        });
-      }
 
-      if (key === "tms") {
-        const result = await checkTmsConnectivity(env);
-        if (result.ok) {
-          const detail = result.label ? `\nLabel: ${result.label}\nSuggestion: ${result.suggestion}` : "";
-          return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529A\n\u5EF6\u65F6: ${result.latencyMs}ms${detail}\nTMS API \u53EF\u6B63\u5E38\u8C03\u7528`, {
+        if (key === "tms") {
+          const result = await checkTmsConnectivity(env);
+          if (result.ok) {
+            const detail = result.label ? `\nLabel: ${result.label}\nSuggestion: ${result.suggestion}` : "";
+            return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF6\u65F6: ${result.latencyMs}ms${detail}\nTMS API \u53EF\u6B63\u5E38\u8C03\u7528`, {
+              inline_keyboard: [[{ text: "\u{1F6E1} TMS\u53CD\u9A9A\u6311", callback_data: "config:menu:tms" }]]
+            });
+          }
+          return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF6\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 TENCENT_SECRET_ID/KEY \u662F\u5426\u6B63\u786E\n2. \u786E\u8BA4\u817E\u8BAF\u4E91 TMS \u670D\u52A1\u5DF2\u5F00\u901A\n3. \u68C0\u67E5 TENCENT_TMS_REGION \u503A\u662F\u5426\u6B63\u786E`, {
             inline_keyboard: [[{ text: "\u{1F6E1} TMS\u53CD\u9A9A\u6311", callback_data: "config:menu:tms" }]]
           });
         }
-        return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF6\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 TENCENT_SECRET_ID/KEY \u662F\u5426\u6B63\u786E\n2. \u786E\u8BA4\u817E\u8BAF\u4E91 TMS \u670D\u52A1\u5DF2\u5F00\u901A\n3. \u68C0\u67E5 TENCENT_TMS_REGION \u503A\u662F\u5426\u6B63\u786E`, {
-          inline_keyboard: [[{ text: "\u{1F6E1} TMS\u53CD\u9A9A\u6311", callback_data: "config:menu:tms" }]]
-        });
       }
-    }
 
     if (type === "toggle") {
       if (key === "enable_ai_anti_harassment" && val === "true" && !env.LLM_KEY) {
