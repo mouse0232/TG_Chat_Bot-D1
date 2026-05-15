@@ -37,7 +37,7 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
             [{ text: "🚫 屏蔽词", callback_data: "config:menu:kw" }, { text: "🛠 过滤", callback_data: "config:menu:fl" }],
             [{ text: "👮 协管", callback_data: "config:menu:auth" }, { text: "💾 备份/通知", callback_data: "config:menu:bak" }],
             [{ text: "\u{1F319} \u8425\u4E1A\u72B6\u6001", callback_data: "config:menu:busy" }, { text: "\u{1F6E1} \u53CD\u9A9A\u6311", callback_data: "config:menu:ah" }],
-            [{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }, { text: "\u{1F6E1} TMS\u53CD\u9A9A\u6311", callback_data: "config:menu:tms" }]
+            [{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }]
           ]
         });
 
@@ -129,6 +129,8 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
 }
       }
 
+      // TMS 入口已暂时禁用
+      /*
       if (key === "tms") {
         const tmsEnabled = await getBoolConfig("enable_tencent_tms", env);
         const threshold = await getConfig("tencent_tms_trust_threshold", env) || 3;
@@ -137,17 +139,18 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
         const t = (v) => v ? "✅" : "❌";
         const secretReady = !!env.TENCENT_SECRET_ID && !!env.TENCENT_SECRET_KEY;
         const secretStatus = secretReady ? "✅ 已配置" : "❌ 未配置密钥";
-        return render(`🛡 <b>TMS 反骚扰检测</b>\n总开关: ${t(tmsEnabled)}\n密钥配置: ${secretStatus}\n信任阈值: 当日连续通过 ${threshold} 次\nReview拦截阈值: Score >= ${reviewThreshold}\n加信通知: ${t(notifyAuto)}\n\n<b>说明</b>\n- 腾讯TMS毫秒级响应，延时远低于AI\n- 与AI反骚扰<b>互斥</b>，开启TMS自动关闭AI\n- 信任列表与AI共享<b>同一套</b>${!secretReady ? "\n\n⚠️ <b>请先配置密钥再开启</b>" : ""}`, {
+        return render(`🛡 <b>TMS 反骚扰检测</b>\n总开关：${t(tmsEnabled)}\n密钥配置：${secretStatus}\n信任阈值：当日连续通过 ${threshold} 次\nReview 拦截阈值：Score >= ${reviewThreshold}\n加信通知：${t(notifyAuto)}\n\n<b>说明</b>\n- 腾讯 TMS 毫秒级响应，延时远低于 AI\n- 与 AI 反骚扰<b>互斥</b>，开启 TMS 自动关闭 AI\n- 信任列表与 AI 共享<b>同一套</b>${!secretReady ? "\n\n⚠️ <b>请先配置密钥再开启</b>" : ""}`, {
           inline_keyboard: [
-            [{ text: `总开关: ${t(tmsEnabled)}${!secretReady && !tmsEnabled ? " (需先配置密钥)" : ""}`, callback_data: `config:toggle:enable_tencent_tms:${!tmsEnabled}` }],
-            [{ text: `信任阈值: ${threshold}`, callback_data: `config:edit:tencent_tms_trust_threshold` }],
-            [{ text: `Review阈值: ${reviewThreshold}`, callback_data: `config:edit:tencent_tms_review_block_threshold` }],
-            [{ text: `加信通知: ${t(notifyAuto)}`, callback_data: `config:toggle:tencent_tms_notify_auto_whitelist:${!notifyAuto}` }],
+            [{ text: `总开关：${t(tmsEnabled)}${!secretReady && !tmsEnabled ? " (需先配置密钥)" : ""}`, callback_data: `config:toggle:enable_tencent_tms:${!tmsEnabled}` }],
+            [{ text: `信任阈值：${threshold}`, callback_data: `config:edit:tencent_tms_trust_threshold` }],
+            [{ text: `Review 阈值：${reviewThreshold}`, callback_data: `config:edit:tencent_tms_review_block_threshold` }],
+            [{ text: `加信通知：${t(notifyAuto)}`, callback_data: `config:toggle:tencent_tms_notify_auto_whitelist:${!notifyAuto}` }],
             [{ text: "🔍 检测连通性", callback_data: "config:check:tms" }],
             [back]
           ]
         });
       }
+      */
       
       if (type === "check") {
         if (key === "ai") {
