@@ -74,6 +74,8 @@ export async function callTmsApi(env, content) {
   const region = env.TENCENT_TMS_REGION || TMS_REGION_DEFAULT;
   const timestamp = Math.floor(Date.now() / 1000);
 
+  console.log("[TMS] Calling API, region:", region, "text:", content.substring(0, 50));
+
   const payload = JSON.stringify({ Content: btoa(content) });
   const authorization = await signRequest(secretId, secretKey, payload, timestamp);
 
@@ -98,11 +100,13 @@ export async function callTmsApi(env, content) {
 
     clearTimeout(timer);
 
+    const data = await response.json();
+    console.log("[TMS] Response status:", response.status, "data:", JSON.stringify(data).substring(0, 200));
+
     if (!response.ok) {
       throw new Error(`TMS API returned ${response.status}: ${response.statusText}`);
     }
 
-    const data = await response.json();
     if (data.Response?.Error) {
       throw new Error(`TMS API error: ${data.Response.Error.Code} - ${data.Response.Error.Message}`);
     }
