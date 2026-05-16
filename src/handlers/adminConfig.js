@@ -153,84 +153,84 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
         });
       }
       */
-      
-      if (type === "check") {
-        if (key === "ai") {
-          console.error("[CHECK_AI] Starting connectivity check");
-          const result = await checkAiConnectivity(env);
-          console.error("[CHECK_AI] Result:", JSON.stringify(result));
-          if (result.ok) {
-            return render(`\u{1F916} AI \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF6\u65F6: ${result.latencyMs}ms\nLLM API \u53EF\u6B63\u5E38\u8C03\u7528`, {
-              inline_keyboard: [[{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }]]
-            });
-          }
-          return render(`\u{1F916} AI \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF6\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 LLM_KEY \u662F\u5426\u6709\u6548\n2. \u68C0\u67E5 LLM_API \u5730\u5740\u662F\u5426\u6B63\u786E\n3. \u7528 curl \u6D4B\u8BD5 API \u53EF\u8FDE\u901A`, {
+
+    if (type === "check") {
+      if (key === "ai") {
+        console.error("[CHECK_AI] Starting connectivity check");
+        const result = await checkAiConnectivity(env);
+        console.error("[CHECK_AI] Result:", JSON.stringify(result));
+        if (result.ok) {
+          return render(`\u{1F916} AI \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF6\u65F6: ${result.latencyMs}ms\nLLM API \u53EF\u6B63\u5E38\u8C03\u7528`, {
             inline_keyboard: [[{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }]]
           });
         }
+        return render(`\u{1F916} AI \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF6\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 LLM_KEY \u662F\u5426\u6709\u6548\n2. \u68C0\u67E5 LLM_API \u5730\u5740\u662F\u5426\u6B63\u786E\n3. \u7528 curl \u6D4B\u8BD5 API \u53EF\u8FDE\u901A`, {
+          inline_keyboard: [[{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }]]
+        });
+      }
 
-        if (key === "tms") {
-          console.error("[CHECK_TMS] Starting connectivity check");
-          const result = await checkTmsConnectivity(env);
-          console.error("[CHECK_TMS] Result:", JSON.stringify(result));
-          if (result.ok) {
-            const detail = result.label ? `\nLabel: ${result.label}\nSuggestion: ${result.suggestion}` : "";
-            return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF6\u65F6: ${result.latencyMs}ms${detail}\nTMS API \u53EF\u6B63\u5E38\u8C03\u7528`, {
-              inline_keyboard: [[{ text: "\u{1F6E1} TMS\u53CD\u9A9A\u6311", callback_data: "config:menu:tms" }]]
-            });
-          }
-          return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF6\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 TENCENT_SECRET_ID/KEY \u662F\u5426\u6B63\u786E\n2. \u786E\u8BA4\u817E\u8BAF\u4E91 TMS \u670D\u52A1\u5DF2\u5F00\u901A\n3. \u68C0\u67E5 TENCENT_TMS_REGION \u503A\u662F\u5426\u6B63\u786E`, {
+      if (key === "tms") {
+        console.error("[CHECK_TMS] Starting connectivity check");
+        const result = await checkTmsConnectivity(env);
+        console.error("[CHECK_TMS] Result:", JSON.stringify(result));
+        if (result.ok) {
+          const detail = result.label ? `\nLabel: ${result.label}\nSuggestion: ${result.suggestion}` : "";
+          return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF6\u65F6: ${result.latencyMs}ms${detail}\nTMS API \u53EF\u6B63\u5E38\u8C03\u7528`, {
             inline_keyboard: [[{ text: "\u{1F6E1} TMS\u53CD\u9A9A\u6311", callback_data: "config:menu:tms" }]]
           });
         }
-
-        if (key === "perms") {
-          console.error("[CHECK_PERMS] Starting permission check");
-          
-          const loadingMsg = await render(`🔐 <b>权限检测中</b>\n\n正在检查各项权限...\n请稍候`, {
-            inline_keyboard: [[{ text: "⏳ 检测中...", callback_data: "config:check:perms_loading" }]]
-          });
-
-          try {
-            console.error("[CHECK_PERMS] Calling checkAllPermissions");
-            const result = await checkAllPermissions(env);
-            console.error("[CHECK_PERMS] Result:", JSON.stringify(result));
-            
-            const reportHtml = formatPermissionReport(result);
-            
-            await api(env.BOT_TOKEN, "editMessageText", {
-              chat_id: cid,
-              message_id: loadingMsg.result.message_id,
-              text: reportHtml,
-              parse_mode: "HTML",
-              reply_markup: {
-                inline_keyboard: [
-                  [{ text: "🔄 重新检测", callback_data: "config:check:perms" }],
-                  [{ text: "🔙 返回", callback_data: "config:menu" }]
-                ]
-              }
-            });
-          } catch (e) {
-            console.error("[CHECK_PERMS] Error:", e);
-            await api(env.BOT_TOKEN, "editMessageText", {
-              chat_id: cid,
-              message_id: loadingMsg.result.message_id,
-              text: `❌ <b>检测失败</b>\n\n错误信息：${escapeHTML(e.message)}\n\n请重试`,
-              parse_mode: "HTML",
-              reply_markup: {
-                inline_keyboard: [
-                  [{ text: "🔄 重新检测", callback_data: "config:check:perms" }],
-                  [{ text: "🔙 返回", callback_data: "config:menu" }]
-                ]
-              }
-            });
-          }
-          
-          return;
-        }
+        return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF6\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 TENCENT_SECRET_ID/KEY \u662F\u5426\u6B63\u786E\n2. \u786E\u8BA4\u817E\u8BAF\u4E91 TMS \u670D\u52A1\u5DF2\u5F00\u901A\n3. \u68C0\u67E5 TENCENT_TMS_REGION \u503A\u662F\u5426\u6B63\u786E`, {
+          inline_keyboard: [[{ text: "\u{1F6E1} TMS\u53CD\u9A9A\u6311", callback_data: "config:menu:tms" }]]
+        });
       }
 
-      if (type === "toggle") {
+      if (key === "perms") {
+        console.error("[CHECK_PERMS] Starting permission check");
+        
+        const loadingMsg = await render(`🔐 <b>权限检测中</b>\n\n正在检查各项权限...\n请稍候`, {
+          inline_keyboard: [[{ text: "⏳ 检测中...", callback_data: "config:check:perms_loading" }]]
+        });
+
+        try {
+          console.error("[CHECK_PERMS] Calling checkAllPermissions");
+          const result = await checkAllPermissions(env);
+          console.error("[CHECK_PERMS] Result:", JSON.stringify(result));
+          
+          const reportHtml = formatPermissionReport(result);
+          
+          await api(env.BOT_TOKEN, "editMessageText", {
+            chat_id: cid,
+            message_id: loadingMsg.result.message_id,
+            text: reportHtml,
+            parse_mode: "HTML",
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "🔄 重新检测", callback_data: "config:check:perms" }],
+                [{ text: "🔙 返回", callback_data: "config:menu" }]
+              ]
+            }
+          });
+        } catch (e) {
+          console.error("[CHECK_PERMS] Error:", e);
+          await api(env.BOT_TOKEN, "editMessageText", {
+            chat_id: cid,
+            message_id: loadingMsg.result.message_id,
+            text: `❌ <b>检测失败</b>\n\n错误信息：${escapeHTML(e.message)}\n\n请重试`,
+            parse_mode: "HTML",
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "🔄 重新检测", callback_data: "config:check:perms" }],
+                [{ text: "🔙 返回", callback_data: "config:menu" }]
+              ]
+            }
+          });
+        }
+        
+        return;
+      }
+    }
+
+    if (type === "toggle") {
       if (key === "enable_ai_anti_harassment" && val === "true" && !env.LLM_KEY) {
         return render("❌ <b>无法开启 AI 反骚扰</b>\n\n未配置 LLM 环境变量。\n请在 Cloudflare Dashboard 或 wrangler secret 中设置以下变量后重试：\n\n<b>必需</b>:\n• LLM_KEY — LLM API Key\n\n<b>可选</b>:\n• LLM_API — API Base URL (默认 OpenAI)\n• LLM_MODEL — 模型名称 (默认 gpt-4o-mini)\n• LLM_TIMEOUT_MS — 超时毫秒数 (默认 5000)", {
           inline_keyboard: [[{ text: "🔙 返回 AI 反骚扰", callback_data: "config:menu:aiah" }]]
