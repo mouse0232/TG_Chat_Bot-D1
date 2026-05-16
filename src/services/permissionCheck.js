@@ -53,16 +53,15 @@ async function checkBotPermissions(env) {
 
     if (env.ADMIN_GROUP_ID) {
       try {
-        await apiWithTimeout(env.BOT_TOKEN, "sendMessage", {
+        const testMsg = await apiWithTimeout(env.BOT_TOKEN, "sendMessage", {
           chat_id: env.ADMIN_GROUP_ID,
-          text: "权限检测测试消息",
-          message_thread_id: 1
+          text: "权限检测测试消息"
         }, 3000);
         result.canSendMessage = true;
         try {
           await apiWithTimeout(env.BOT_TOKEN, "deleteMessage", {
             chat_id: env.ADMIN_GROUP_ID,
-            message_id: 1
+            message_id: testMsg.message_id
           }, 2000);
         } catch {}
       } catch (e) {
