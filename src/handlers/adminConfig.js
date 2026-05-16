@@ -185,12 +185,17 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
         }
 
         if (key === "perms") {
+          console.error("[CHECK_PERMS] Starting permission check");
+          
           const loadingMsg = await render(`🔐 <b>权限检测中</b>\n\n正在检查各项权限...\n请稍候`, {
             inline_keyboard: [[{ text: "⏳ 检测中...", callback_data: "config:check:perms_loading" }]]
           });
 
           try {
+            console.error("[CHECK_PERMS] Calling checkAllPermissions");
             const result = await checkAllPermissions(env);
+            console.error("[CHECK_PERMS] Result:", JSON.stringify(result));
+            
             const reportHtml = formatPermissionReport(result);
             
             await api(env.BOT_TOKEN, "editMessageText", {
@@ -206,6 +211,7 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
               }
             });
           } catch (e) {
+            console.error("[CHECK_PERMS] Error:", e);
             await api(env.BOT_TOKEN, "editMessageText", {
               chat_id: cid,
               message_id: loadingMsg.result.message_id,

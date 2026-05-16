@@ -5,6 +5,25 @@
 import { api } from '../api/telegram.js';
 
 /**
+ * 带超时的 API 调用
+ */
+async function apiWithTimeout(token, method, body, timeoutMs = 3000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    return await Promise.race([
+      api(token, method, body),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('请求超时')), timeoutMs);
+      })
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
  * 检测 Bot 自身权限
  * @param {Object} env - 环境变量
  * @returns {Promise<Object>} 检测结果
@@ -24,7 +43,7 @@ async function checkBotPermissions(env) {
   }
 
   try {
-    const botInfo = await api(env.BOT_TOKEN, "getMe", {});
+    const botInfo = await apiWithTimeout(env.BOT_TOKEN, "getMe", {}, 3000);
     result.botTokenValid = true;
     result.botInfo = {
       id: botInfo.id,
@@ -33,17 +52,17 @@ async function checkBotPermissions(env) {
     };
 
     try {
-      await api(env.BOT_TOKEN, "getMyCommands", {});
+      await apiWithTimeout(env.BOT_TOKEN, "getMyCommands", {}, 3000);
       result.canSetCommands = true;
     } catch (e) {
       result.errors.push(`命令权限受限：${e.message}`);
     }
 
     try {
-      await api(env.BOT_TOKEN, "sendMessage", {
+      await apiWithTimeout(env.BOT_TOKEN, "sendMessage", {
         chat_id: botInfo.id,
         text: "Permission check"
-      });
+      }, 3000);
       result.canSendMessage = true;
     } catch (e) {
       result.errors.push(`消息发送权限受限：${e.message}`);
@@ -79,14 +98,14 @@ async function checkGroupPermissions(env) {
   const chatId = env.ADMIN_GROUP_ID;
 
   try {
-    const chat = await api(env.BOT_TOKEN, "getChat", { chat_id: chatId });
+    const chat = await apiWithTimeout(env.BOT_TOKEN, "getChat", { chat_id: chatId }, 3000);
     
     try {
-      const botInfo = await api(env.BOT_TOKEN, "getMe", {});
-      const member = await api(env.BOT_TOKEN, "getChatMember", {
+      const botInfo = await apiWithTimeout(env.BOT_TOKEN, "getMe", {}, 3000);
+      const member = await apiWithTimeout(env.BOT_TOKEN, "getChatMember", {
         chat_id: chatId,
         user_id: botInfo.id
-      });
+      }, 3000);
       
       if (member.status === "administrator" || member.status === "creator") {
         result.isBotAdmin = true;
