@@ -8,19 +8,12 @@ import { api } from '../api/telegram.js';
  * 带超时的 API 调用
  */
 async function apiWithTimeout(token, method, body, timeoutMs = 3000) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
-  try {
-    return await Promise.race([
-      api(token, method, body),
-      new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('请求超时')), timeoutMs);
-      })
-    ]);
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  return await Promise.race([
+    api(token, method, body),
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('请求超时')), timeoutMs);
+    })
+  ]);
 }
 
 /**
@@ -58,14 +51,25 @@ async function checkBotPermissions(env) {
       result.errors.push(`命令权限受限：${e.message}`);
     }
 
-    try {
-      await apiWithTimeout(env.BOT_TOKEN, "sendMessage", {
-        chat_id: botInfo.id,
-        text: "Permission check"
-      }, 3000);
+    if (env.ADMIN_GROUP_ID) {
+      try {
+        await apiWithTimeout(env.BOT_TOKEN, "sendMessage", {
+          chat_id: env.ADMIN_GROUP_ID,
+          text: "权限检测测试消息",
+          message_thread_id: 1
+        }, 3000);
+        result.canSendMessage = true;
+        try {
+          await apiWithTimeout(env.BOT_TOKEN, "deleteMessage", {
+            chat_id: env.ADMIN_GROUP_ID,
+            message_id: 1
+          }, 2000);
+        } catch {}
+      } catch (e) {
+        result.errors.push(`消息发送权限受限：${e.message}`);
+      }
+    } else {
       result.canSendMessage = true;
-    } catch (e) {
-      result.errors.push(`消息发送权限受限：${e.message}`);
     }
   } catch (e) {
     result.errors.push(`Bot Token 无效：${e.message}`);
@@ -110,9 +114,9 @@ async function checkGroupPermissions(env) {
       if (member.status === "administrator" || member.status === "creator") {
         result.isBotAdmin = true;
         
-        result.canCreateTopics = !!chat.is_forum || member.can_manage_topics || false;
-        result.canSendMessages = member.can_send_messages || member.can_post_messages || false;
-        result.canPinMessages = member.can_pin_messages || false;
+        result.canCreateTopics = chat.is_forum ? (member.can_manage_topics !== false) : true;
+        result.canSendMessages = member.can_send_messages !== false;
+        result.canPinMessages = member.can_pin_messages !== false;
       } else {
         result.errors.push("Bot 不是管理群组的管理员");
       }
