@@ -187,9 +187,16 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
       if (key === "perms") {
         console.error("[CHECK_PERMS] Starting permission check");
         
-        const loadingMsg = await render(`🔐 <b>权限检测中</b>\n\n正在检查各项权限...\n请稍候`, {
-          inline_keyboard: [[{ text: "⏳ 检测中...", callback_data: "config:check:perms_loading" }]]
+        const loadingMsg = await api(env.BOT_TOKEN, "sendMessage", {
+          chat_id: cid,
+          text: "🔐 <b>权限检测中</b>\n\n正在检查各项权限...\n请稍候",
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [[{ text: "⏳ 检测中...", callback_data: "config:check:perms_loading" }]]
+          }
         });
+
+        const editMsgId = loadingMsg.message_id;
 
         try {
           console.error("[CHECK_PERMS] Calling checkAllPermissions");
@@ -200,7 +207,7 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
           
           await api(env.BOT_TOKEN, "editMessageText", {
             chat_id: cid,
-            message_id: loadingMsg.result.message_id,
+            message_id: editMsgId,
             text: reportHtml,
             parse_mode: "HTML",
             reply_markup: {
@@ -214,7 +221,7 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
           console.error("[CHECK_PERMS] Error:", e);
           await api(env.BOT_TOKEN, "editMessageText", {
             chat_id: cid,
-            message_id: loadingMsg.result.message_id,
+            message_id: editMsgId,
             text: `❌ <b>检测失败</b>\n\n错误信息：${escapeHTML(e.message)}\n\n请重试`,
             parse_mode: "HTML",
             reply_markup: {
