@@ -19,6 +19,7 @@ import { safeRegexTest } from '../security/regexGuard.js';
 import { checkUser, handleUserIntercept, checkMessage, handleMessageIntercept } from '../security/antiHarassment.js';
 import { checkAiSpam, handleAiSpamIntercept, handleAiCleanPass } from '../security/aiAntiHarassment.js';
 import { checkTmsSpam, handleTmsSpamIntercept, handleTmsCleanPass } from '../security/tmsAntiHarassment.js';
+import { checkAllPermissions, formatPermissionReport } from '../services/permissionCheck.js';
 
 /**
  * 处理私聊消息
@@ -98,9 +99,38 @@ export async function handlePrivate(msg, env, ctx) {
   if (text === "/help" && (await isAuthAdmin(id, env))) {
     return api(env.BOT_TOKEN, "sendMessage", {
       chat_id: id,
-      text: "ℹ️ <b>帮助</b>\n• 回复消息即对话\n• /start 打开面板\n• /reset <id> 重置用户验证(仅主管理员)",
+      text: "ℹ️ <b>帮助</b>\n• 回复消息即对话\n• /start 打开面板\n• /reset <id> 重置用户验证 (仅主管理员)",
       parse_mode: "HTML"
     });
+  }
+
+  if ((text === "/checkperms" || text === "/check_permissions") && (await isAuthAdmin(id, env))) {
+    const loadingMsg = await api(env.BOT_TOKEN, "sendMessage", {
+      chat_id: id,
+      text: "🔐 <b>权限检测中</b>\n\n正在检查各项权限...\n请稍候",
+      parse_mode: "HTML"
+    });
+
+    try {
+      const result = await checkAllPermissions(env);
+      const reportHtml = formatPermissionReport(result);
+      
+      await api(env.BOT_TOKEN, "editMessageText", {
+        chat_id: id,
+        message_id: loadingMsg.result.message_id,
+        text: reportHtml,
+        parse_mode: "HTML"
+      });
+    } catch (e) {
+      await api(env.BOT_TOKEN, "editMessageText", {
+        chat_id: id,
+        message_id: loadingMsg.result.message_id,
+        text: `❌ <b>检测失败</b>\n\n错误信息：${escapeHTML(e.message)}\n\n请重试`,
+        parse_mode: "HTML"
+      });
+    }
+    
+    return;
   }
 
   // 继续使用 u0，避免重复读

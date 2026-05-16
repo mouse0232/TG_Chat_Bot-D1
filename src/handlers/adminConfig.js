@@ -7,6 +7,7 @@ import { getConfig, setConfig, getBoolConfig, getJsonConfig } from '../database/
 import { sql } from '../database/index.js';
 import { escapeHTML, safeParse } from '../utils/helpers.js';
 import { checkAiConnectivity, checkTmsConnectivity } from '../security/connectivityCheck.js';
+import { checkAllPermissions, formatPermissionReport } from '../services/permissionCheck.js';
 
 /**
  * 处理管理面板
@@ -37,7 +38,8 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
             [{ text: "🚫 屏蔽词", callback_data: "config:menu:kw" }, { text: "🛠 过滤", callback_data: "config:menu:fl" }],
             [{ text: "👮 协管", callback_data: "config:menu:auth" }, { text: "💾 备份/通知", callback_data: "config:menu:bak" }],
             [{ text: "\u{1F319} \u8425\u4E1A\u72B6\u6001", callback_data: "config:menu:busy" }, { text: "\u{1F6E1} \u53CD\u9A9A\u6311", callback_data: "config:menu:ah" }],
-            [{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }]
+            [{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }],
+            [{ text: "🔐 权限检测", callback_data: "config:check:perms" }]
           ]
         });
 
@@ -181,9 +183,48 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
             inline_keyboard: [[{ text: "\u{1F6E1} TMS\u53CD\u9A9A\u6311", callback_data: "config:menu:tms" }]]
           });
         }
+
+        if (key === "perms") {
+          const loadingMsg = await render(`🔐 <b>权限检测中</b>\n\n正在检查各项权限...\n请稍候`, {
+            inline_keyboard: [[{ text: "⏳ 检测中...", callback_data: "config:check:perms_loading" }]]
+          });
+
+          try {
+            const result = await checkAllPermissions(env);
+            const reportHtml = formatPermissionReport(result);
+            
+            await api(env.BOT_TOKEN, "editMessageText", {
+              chat_id: cid,
+              message_id: loadingMsg.result.message_id,
+              text: reportHtml,
+              parse_mode: "HTML",
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "🔄 重新检测", callback_data: "config:check:perms" }],
+                  [{ text: "🔙 返回", callback_data: "config:menu" }]
+                ]
+              }
+            });
+          } catch (e) {
+            await api(env.BOT_TOKEN, "editMessageText", {
+              chat_id: cid,
+              message_id: loadingMsg.result.message_id,
+              text: `❌ <b>检测失败</b>\n\n错误信息：${escapeHTML(e.message)}\n\n请重试`,
+              parse_mode: "HTML",
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: "🔄 重新检测", callback_data: "config:check:perms" }],
+                  [{ text: "🔙 返回", callback_data: "config:menu" }]
+                ]
+              }
+            });
+          }
+          
+          return;
+        }
       }
 
-    if (type === "toggle") {
+      if (type === "toggle") {
       if (key === "enable_ai_anti_harassment" && val === "true" && !env.LLM_KEY) {
         return render("❌ <b>无法开启 AI 反骚扰</b>\n\n未配置 LLM 环境变量。\n请在 Cloudflare Dashboard 或 wrangler secret 中设置以下变量后重试：\n\n<b>必需</b>:\n• LLM_KEY — LLM API Key\n\n<b>可选</b>:\n• LLM_API — API Base URL (默认 OpenAI)\n• LLM_MODEL — 模型名称 (默认 gpt-4o-mini)\n• LLM_TIMEOUT_MS — 超时毫秒数 (默认 5000)", {
           inline_keyboard: [[{ text: "🔙 返回 AI 反骚扰", callback_data: "config:menu:aiah" }]]

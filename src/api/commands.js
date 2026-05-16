@@ -25,7 +25,8 @@ export async function registerCommands(env) {
         commands: [
           { command: "start", description: "面板" }, 
           { command: "help", description: "帮助" }, 
-          { command: "reset", description: "重置用户验证(主管理员)" }
+          { command: "reset", description: "重置用户验证 (主管理员)" },
+          { command: "checkperms", description: "检测 Bot 权限状态" }
         ],
         scope: { type: "chat", chat_id: id }
       });
