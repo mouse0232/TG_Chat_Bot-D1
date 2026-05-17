@@ -20,6 +20,7 @@ import { checkUser, handleUserIntercept, checkMessage, handleMessageIntercept } 
 import { checkAiSpam, handleAiSpamIntercept, handleAiCleanPass } from '../security/aiAntiHarassment.js';
 import { checkTmsSpam, handleTmsSpamIntercept, handleTmsCleanPass } from '../security/tmsAntiHarassment.js';
 import { checkAllPermissions, formatPermissionReport } from '../services/permissionCheck.js';
+import { log } from '../utils/logger.js';
 
 /**
  * 处理私聊消息
@@ -52,7 +53,7 @@ export async function handlePrivate(msg, env, ctx) {
       api(env.BOT_TOKEN, "sendMessage", {
         chat_id: id,
         text: "🚫 您已被管理员屏蔽，无法发送消息。如有误判请联系管理员解除。"
-      }).catch(() => {});
+      }).catch(e => log.warn('Private', 'send blocked notice failed', { chatId: id, error: e?.message || String(e) }));
     }
     return;
   }
@@ -64,7 +65,7 @@ export async function handlePrivate(msg, env, ctx) {
       const warnKey = `rlwarn:${id}`;
       if (!hasLock(warnKey)) {
         setLock(warnKey, 10000);
-        api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: "⏳ 请求过于频繁，请稍后再试。" }).catch(() => {});
+        api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: "⏳ 请求过于频繁，请稍后再试。" }).catch(e => log.warn('Private', 'send rate limit notice failed', { chatId: id, error: e?.message || String(e) }));
       }
       return;
     }
@@ -84,7 +85,7 @@ export async function handlePrivate(msg, env, ctx) {
     api(env.BOT_TOKEN, "sendMessage", {
       chat_id: target,
       text: "⚠️ 管理员要求您重新验证。\n请发送 /start 重新完成验证流程。"
-    }).catch(() => {});
+    }).catch(e => log.warn('Private', 'send reset notice to user failed', { target, error: e?.message || String(e) }));
     return api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: `✅ 已重置用户 ${target} 的验证状态。` });
   }
 
@@ -194,7 +195,7 @@ async function sendStart(id, msg, env) {
     return api(env.BOT_TOKEN, "sendMessage", {
       chat_id: id,
       text: "🚫 您已被管理员屏蔽，无法使用本 Bot。"
-    }).catch(() => {});
+    }).catch(e => log.warn('Private', 'send blocked notice failed', { chatId: id, error: e?.message || String(e) }));
   }
 
   if (u.user_state === "verified") {
@@ -223,7 +224,9 @@ async function sendStart(id, msg, env) {
       media = safeParse(welcomeRaw, null);
       if (media) txt = media.caption || "";
     }
-  } catch {}
+  } catch(e) {
+    log.debug('Private', 'welcome message parse failed', { error: e?.message || String(e) });
+  }
   txt = txt.replace(/{name}|{user}/g, name);
 
   if (media && media.type) {
@@ -234,7 +237,8 @@ async function sendStart(id, msg, env) {
         caption: txt,
         parse_mode: "HTML"
       });
-    } catch {
+    } catch(e) {
+      log.warn('Private', 'send welcome media failed, fallback to text', { chatId: id, error: e?.message || String(e) });
       await api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: txt, parse_mode: "HTML" });
     }
   } else {
@@ -284,7 +288,7 @@ async function handleVerifiedMsg(msg, u, env, ctx) {
           await api(env.BOT_TOKEN, "sendMessage", {
             chat_id: env.ADMIN_GROUP_ID,
             text: `\u2705 \u7528\u6237 ${senderName} \u5F53\u65E5\u8FDE\u7EED\u901A\u8FC7 ${threshold} \u6B21 TMS \u68C0\u6D4B\uFF0C\u5DF2\u52A0\u5165\u4FE1\u4EFB\u5217\u8868\uFF08\u5F53\u65E5\u514D\u68C0\uFF09`
-          }).catch(() => {});
+          }).catch(e => log.debug('Private', 'send tms whitelist notify failed', { error: e?.message || String(e) }));
         }
       }
     }
@@ -304,7 +308,7 @@ async function handleVerifiedMsg(msg, u, env, ctx) {
         await api(env.BOT_TOKEN, "sendMessage", {
           chat_id: env.ADMIN_GROUP_ID,
           text: `✅ 用户 ${senderName} 当日连续通过 ${threshold} 次 AI 检测，已加入 AI 信任列表（当日免检）`
-        }).catch(() => {});
+        }).catch(e => log.debug('Private', 'send ai whitelist notify failed', { error: e?.message || String(e) }));
       }
     }
   }
@@ -345,14 +349,14 @@ async function handleVerifiedMsg(msg, u, env, ctx) {
   if (text) {
     const rules = await getJsonConfig("keyword_responses", env);
     const match = (Array.isArray(rules) ? rules : []).find(r => r && safeRegexTest(r.keywords, text));
-    if (match) api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: match.response }).catch(() => {});
+    if (match) api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: match.response }).catch(e => log.warn('Private', 'send auto-reply failed', { chatId: id, error: e?.message || String(e) }));
   }
 
   // D. 忙碌回复
   if (await getBoolConfig("busy_mode", env)) {
     const now = Date.now();
     if (now - (u.user_info.last_busy_reply || 0) > 300000) {
-      api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: "🌙 " + (await getConfig("busy_msg", env)) }).catch(() => {});
+      api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: "🌙 " + (await getConfig("busy_msg", env)) }).catch(e => log.warn('Private', 'send busy reply failed', { chatId: id, error: e?.message || String(e) }));
       await updateUser(id, { user_info: { last_busy_reply: now } }, env);
     }
   }

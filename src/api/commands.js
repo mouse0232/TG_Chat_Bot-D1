@@ -4,6 +4,7 @@
 
 import { api } from './telegram.js';
 import { getJsonConfig } from '../database/config.js';
+import { log } from '../utils/logger.js';
 
 /**
  * 注册 Bot 命令
@@ -31,5 +32,5 @@ export async function registerCommands(env) {
         scope: { type: "chat", chat_id: id }
       });
     }
-  } catch {}
+  } catch(e) { log.error('Commands', 'Command registration failed', { error: e.message }) }
 }

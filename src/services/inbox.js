@@ -8,15 +8,8 @@ import { getConfig, setConfig } from '../database/config.js';
 import { updateUser } from '../database/users.js';
 import { escapeHTML, getUMeta } from '../utils/helpers.js';
 import { hasLock, setLock } from '../utils/cache.js';
+import { log } from '../utils/logger.js';
 
-/**
- * 处理未读消息通知
- * @param {Object} env - 环境变量
- * @param {Object} msg - Telegram 消息对象
- * @param {Object} u - 用户对象
- * @param {string} tid - 话题 ID
- * @param {Object} uMeta - 用户元信息
- */
 export async function handleInbox(env, msg, u, tid, uMeta) {
   const lk = `inbox:${u.user_id}`;
   if (hasLock(lk)) return;
@@ -28,7 +21,8 @@ export async function handleInbox(env, msg, u, tid, uMeta) {
       const t = await api(env.BOT_TOKEN, "createForumTopic", { chat_id: env.ADMIN_GROUP_ID, name: "🔔 未读消息" });
       inboxId = t.message_thread_id.toString();
       await setConfig("unread_topic_id", inboxId, env);
-    } catch {
+    } catch (e) {
+      log.error('Inbox', 'Create unread topic failed', { error: e?.message || String(e) });
       return;
     }
   }
@@ -53,7 +47,9 @@ export async function handleInbox(env, msg, u, tid, uMeta) {
         });
         await updateUser(u.user_id, { user_info: { last_notify: Date.now() } }, env);
         return;
-      } catch {}
+      } catch (e) {
+        log.warn('Inbox', 'Edit inbox message failed', { userId: u.user_id, msgId: u.user_info.inbox_msg_id, error: e?.message || String(e) });
+      }
     }
 
     const nm = await api(env.BOT_TOKEN, "sendMessage", {

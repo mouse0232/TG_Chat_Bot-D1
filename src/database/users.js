@@ -4,19 +4,16 @@
 
 import { sql, tryRun } from './index.js';
 import { safeParse } from '../utils/helpers.js';
+import { log, logError } from '../utils/logger.js';
 
-/**
- * 获取用户信息（不存在则创建）
- * @param {string|number} id - 用户 ID
- * @param {Object} env - 环境变量
- * @returns {Promise<Object>}
- */
 export async function getUser(id, env) {
   let u = await sql(env, "SELECT * FROM users WHERE user_id = ?", id, "first");
   if (!u) {
     try {
       await sql(env, "INSERT OR IGNORE INTO users (user_id, user_state, user_info_json) VALUES (?, 'new', ?)", [id, "{}"]);
-    } catch {}
+    } catch (e) {
+      log.warn('DB', 'User insert skipped', { userId: id, error: e.message });
+    }
     u = await sql(env, "SELECT * FROM users WHERE user_id = ?", id, "first");
   }
   if (!u) {
@@ -38,13 +35,6 @@ export async function getUser(id, env) {
   return u;
 }
 
-/**
- * 合并用户信息
- * @param {string|number} id - 用户 ID
- * @param {Object} patch - 要合并的数据
- * @param {Object} env - 环境变量
- * @returns {Promise<string>}
- */
 export async function mergeUserInfo(id, patch, env) {
   const row = await sql(env, "SELECT user_info_json FROM users WHERE user_id = ?", id, "first");
   const cur = safeParse(row?.user_info_json || "{}", {});
@@ -52,12 +42,6 @@ export async function mergeUserInfo(id, patch, env) {
   return JSON.stringify(merged);
 }
 
-/**
- * 更新用户信息
- * @param {string|number} id - 用户 ID
- * @param {Object} data - 更新数据
- * @param {Object} env - 环境变量
- */
 export async function updateUser(id, data, env) {
   if (data.user_info) {
     data.user_info_json = await mergeUserInfo(id, data.user_info, env);
@@ -77,16 +61,10 @@ export async function updateUser(id, data, env) {
   try {
     await sql(env, q, v);
   } catch (e) {
-    console.error("Update User Failed:", e);
+    logError('DB', 'User update failed', e, { userId: id });
   }
 }
 
-/**
- * 根据话题 ID 查找用户
- * @param {string} topicId - 话题 ID
- * @param {Object} env - 环境变量
- * @returns {Promise<Object|null>}
- */
 export async function getUserByTopicId(topicId, env) {
   return await sql(env, "SELECT * FROM users WHERE topic_id = ?", topicId, "first");
 }

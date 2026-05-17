@@ -10,6 +10,7 @@ import { updateUser } from '../database/users.js';
 import { manageBlacklist } from '../services/blacklist.js';
 import { api } from '../api/telegram.js';
 import { callTmsApi } from './tencentTms.js';
+import { log, logError } from '../utils/logger.js';
 
 const SPAM_INTERCEPT_MSG = "您的消息因包含垃圾信息已被过滤。如有疑问，请联系管理员。";
 
@@ -72,7 +73,7 @@ export async function checkTmsSpam(msg, user, env) {
 
     return { spam: false, label, score, skipped: false };
   } catch (error) {
-    console.error('[TmsAntiHarassment] TMS API call failed:', error);
+    logError('TmsAntiHarass', 'TMS API call failed', error);
     return { spam: false, skipped: false, error: true };
   }
 }
@@ -87,7 +88,7 @@ export async function checkTmsSpam(msg, user, env) {
  * @param {Object} env - 环境变量
  */
 export async function handleTmsSpamIntercept(userId, userInfo, reason, label, score, env) {
-  console.log(`[TmsAntiHarassment] User ${userId} TMS spam intercepted. Label: ${label}, Score: ${score}, Reason: ${reason}`);
+  log.info('TmsAntiHarass', 'User intercepted', { userId, reason, label, score });
   try {
     await recordSpam(userId, env);
     await updateUser(userId, { is_blocked: true, user_info: { tms_spam_reason: reason, tms_label: label, tms_score: score } }, env);
@@ -97,7 +98,7 @@ export async function handleTmsSpamIntercept(userId, userInfo, reason, label, sc
     await api(env.BOT_TOKEN, "sendMessage", {
       chat_id: userId,
       text: SPAM_INTERCEPT_MSG
-    }).catch(() => {});
+    }).catch(e => log.debug('TmsAntiHarass', 'Notification skipped', { userId, error: e?.message }));
 
     if (env.ADMIN_GROUP_ID) {
       const now = new Date();
@@ -110,10 +111,10 @@ export async function handleTmsSpamIntercept(userId, userInfo, reason, label, sc
         chat_id: env.ADMIN_GROUP_ID,
         text: `\u{1F6D1} [TMS] \u5783\u573E\u4FE1\u606F\u8B66\u540A\n\n\u53D1\u9001\u8005: ${senderName}${uname} (ID: ${userId})\nTMS\u5224\u5B9A: ${label} (${reason})\n\u7F6E\u4FE1\u5EA6: ${score}\n\u5EFA\u8BAE: Block\n\u65F6\u95F4: ${timeStr}`,
         parse_mode: "HTML"
-      }).catch(() => {});
+      }).catch(e => log.debug('TmsAntiHarass', 'Notification skipped', { userId, error: e?.message }));
     }
   } catch (error) {
-    console.error(`[TmsAntiHarassment] TMS spam intercept failed for ${userId}:`, error);
+    logError('TmsAntiHarass', 'Intercept failed', error, { userId });
   }
 }
 
@@ -129,11 +130,11 @@ export async function handleTmsCleanPass(userId, env) {
     const threshold = parseInt(await getConfig("tencent_tms_trust_threshold", env)) || 3;
     const promoted = await checkAndPromoteToWhitelist(userId, env, threshold);
     if (promoted) {
-      console.log(`[TmsAntiHarassment] User ${userId} promoted to trust list`);
+      log.info('TmsAntiHarass', 'User promoted to trust', { userId });
     }
     return promoted;
   } catch (error) {
-    console.error(`[TmsAntiHarassment] Clean pass processing failed for ${userId}:`, error);
+    logError('TmsAntiHarass', 'Clean pass failed', error, { userId });
     return false;
   }
 }

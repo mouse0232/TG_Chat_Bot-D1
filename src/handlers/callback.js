@@ -9,6 +9,7 @@ import { getUser, updateUser } from '../database/users.js';
 import { isAuthAdmin, isPrimaryAdmin } from '../utils/cache.js';
 import { manageBlacklist } from '../services/blacklist.js';
 import { handleAdminConfig } from './adminConfig.js';
+import { log } from '../utils/logger.js';
 
 /**
  * 处理回调查询
@@ -20,12 +21,12 @@ export async function handleCallback(cb, env) {
   const [act, p1, p2] = (data || "").split(":");
 
   if (act === "inbox" && p1 === "del") {
-    await api(env.BOT_TOKEN, "deleteMessage", { chat_id: msg.chat.id, message_id: msg.message_id }).catch(() => {});
+    await api(env.BOT_TOKEN, "deleteMessage", { chat_id: msg.chat.id, message_id: msg.message_id }).catch(e => log.warn('Callback', 'delete message failed', { error: e?.message || String(e) }));
     if (p2) {
       const u = await getUser(p2, env);
       await updateUser(p2, { user_info: { ...u.user_info, last_notify: 0 } }, env);
     }
-    return api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "已处理" }).catch(() => {});
+    return api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "已处理" }).catch(e => log.debug('Callback', 'answer callback query failed', { error: e?.message || String(e) }));
   }
 
   if (act === "note" && p1 === "set") {
@@ -39,16 +40,16 @@ export async function handleCallback(cb, env) {
 
   if (act === "config") {
     if (!(await isPrimaryAdmin(from.id, env))) {
-      return api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "无权", show_alert: true }).catch(() => {});
+      return api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "无权", show_alert: true }).catch(e => log.debug('Callback', 'answer callback query failed', { error: e?.message || String(e) }));
     }
-    await api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id }).catch(() => {});
+    await api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id }).catch(e => log.debug('Callback', 'answer callback query failed', { error: e?.message || String(e) }));
     const [, t, k, v] = (data || "").split(":");
     return handleAdminConfig(msg.chat.id, msg.message_id, t, k, v, env);
   }
 
   if (msg.chat.id.toString() === env.ADMIN_GROUP_ID && ["block", "unblock"].includes(act)) {
     if (!(await isAuthAdmin(from.id, env))) {
-      return api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "无权", show_alert: true }).catch(() => {});
+      return api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "无权", show_alert: true }).catch(e => log.debug('Callback', 'answer callback query failed', { error: e?.message || String(e) }));
     }
     const isB = act === "block";
     const uid = p1;
@@ -61,21 +62,21 @@ export async function handleCallback(cb, env) {
         chat_id: env.ADMIN_GROUP_ID,
         message_id: u.user_info.card_msg_id,
         reply_markup: getBtns(uid, isB)
-      }).catch(() => {});
+      }).catch(e => log.warn('Callback', 'update card markup failed', { uid, error: e?.message || String(e) }));
     }
     await manageBlacklist(env, u, { id: uid, first_name: u.user_info.name || "User", username: u.user_info.username }, isB);
-    api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: isB ? "已屏蔽" : "已解封" }).catch(() => {});
+    api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: isB ? "已屏蔽" : "已解封" }).catch(e => log.debug('Callback', 'answer callback query failed', { error: e?.message || String(e) }));
   }
 
   if (act === "pin_card") {
     if (!(await isAuthAdmin(from.id, env))) {
-      return api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "无权", show_alert: true }).catch(() => {});
+      return api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "无权", show_alert: true }).catch(e => log.debug('Callback', 'answer callback query failed', { error: e?.message || String(e) }));
     }
     api(env.BOT_TOKEN, "pinChatMessage", { 
       chat_id: msg.chat.id, 
       message_id: msg.message_id, 
       message_thread_id: msg.message_thread_id 
-    }).catch(() => {});
-    api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "已置顶" }).catch(() => {});
+    }).catch(e => log.warn('Callback', 'pin message failed', { error: e?.message || String(e) }));
+    api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "已置顶" }).catch(e => log.debug('Callback', 'answer callback query failed', { error: e?.message || String(e) }));
   }
 }

@@ -13,18 +13,12 @@ import { sendInfoCardToTopic } from './infoCard.js';
 import { handleInbox } from './inbox.js';
 import { handleBackup } from './backup.js';
 import { maybeCleanupMessages } from '../security/cleanup.js';
+import { log, logError } from '../utils/logger.js';
 
-/**
- * 转发消息到话题
- * @param {Object} msg - Telegram 消息对象
- * @param {Object} u - 用户对象
- * @param {Object} env - 环境变量
- * @param {Object} ctx - Worker 上下文
- */
 export async function relayToTopic(msg, u, env, ctx) {
   const uid = u.user_id;
+  log.info('Relay', 'Message relay started', { userId: uid, requestId: ctx?.requestId });
 
-  // 保险：若中途被屏蔽（并发情况下），直接终止（管理员除外）
   if (u.is_blocked) {
     const { isAuthAdmin } = await import('../utils/cache.js');
     if (!(await isAuthAdmin(uid, env))) return;
@@ -34,7 +28,7 @@ export async function relayToTopic(msg, u, env, ctx) {
   let tid = u.topic_id;
 
   if (!tid) {
-    tid = await createTopicWithLock(uid, u, uMeta, env);
+    tid = await createTopicWithLock(uid, u, uMeta, env, ctx);
     if (!tid) return;
   }
 
@@ -61,7 +55,7 @@ export async function relayToTopic(msg, u, env, ctx) {
       });
       relaySuccess = true;
     } catch (cpErr) {
-      console.error("Copy Failed:", cpErr);
+      logError('Relay', 'Copy message failed', cpErr, { userId: uid });
       if (cpErr.message && (cpErr.message.includes("thread") || cpErr.message.includes("not found"))) {
         await updateUser(uid, { topic_id: null }, env);
         return api(env.BOT_TOKEN, "sendMessage", { chat_id: uid, text: "⚠️ 会话已过期，请重发" });
@@ -70,6 +64,8 @@ export async function relayToTopic(msg, u, env, ctx) {
   }
 
   if (relaySuccess) {
+    log.info('Relay', 'Message forwarded to topic', { userId: uid, topicId: tid, requestId: ctx?.requestId });
+
     const dk = `delivered:${uid}:${msg.message_id}`;
     if (!hasLock(dk)) {
       setLock(dk, 20000);
@@ -79,26 +75,20 @@ export async function relayToTopic(msg, u, env, ctx) {
     if (msg.text) {
       try {
         await saveMessage(uid, msg.message_id, msg.text, msg.date, env);
-      } catch {}
+      } catch (e) {
+        log.warn('Relay', 'Save message skipped', { userId: uid, error: e.message });
+      }
       maybeCleanupMessages(env, ctx);
     }
 
     await Promise.all([
-      handleInbox(env, msg, u, tid, uMeta), 
+      handleInbox(env, msg, u, tid, uMeta),
       handleBackup(msg, uMeta, env)
     ]);
   }
 }
 
-/**
- * 创建话题（带分布式锁）
- * @param {string} uid - 用户 ID
- * @param {Object} u - 用户对象
- * @param {Object} uMeta - 用户元信息
- * @param {Object} env - 环境变量
- * @returns {Promise<string|null>} - 话题 ID
- */
-async function createTopicWithLock(uid, u, uMeta, env) {
+async function createTopicWithLock(uid, u, uMeta, env, ctx) {
   const now = Date.now();
   const staleBefore = now - TOPIC_LOCK_STALE_MS;
 
@@ -131,16 +121,15 @@ async function createTopicWithLock(uid, u, uMeta, env) {
         return tid;
       }
     } catch (e) {
-      console.error("Topic Create Error:", e);
+      logError('Relay', 'Topic create failed', e, { userId: uid, requestId: ctx?.requestId });
       await updateUser(uid, { topic_creating: 0 }, env);
       const existUser = await getUser(uid, env);
       if (existUser.topic_id) return existUser.topic_id;
-      
-      api(env.BOT_TOKEN, "sendMessage", { chat_id: uid, text: "⚠️ 系统繁忙，请稍后重试" }).catch(() => {});
+
+      api(env.BOT_TOKEN, "sendMessage", { chat_id: uid, text: "⚠️ 系统繁忙，请稍后重试" }).catch(e => log.debug('Relay', 'System busy notification failed', { userId: uid, error: e?.message || String(e) }));
       return null;
     }
   } else {
-    // 轮询等待其他实例创建话题
     for (let i = 0; i < TOPIC_LOCK_POLL_MAX; i++) {
       const delay = Math.min(1500, TOPIC_LOCK_POLL_BASE_MS * Math.pow(2, i)) + Math.floor(Math.random() * 60);
       await sleep(delay);
@@ -152,17 +141,11 @@ async function createTopicWithLock(uid, u, uMeta, env) {
       }
     }
 
-    api(env.BOT_TOKEN, "sendMessage", { chat_id: uid, text: "⚠️ 系统繁忙，请稍后重试" }).catch(() => {});
+    api(env.BOT_TOKEN, "sendMessage", { chat_id: uid, text: "⚠️ 系统繁忙，请稍后重试" }).catch(e => log.debug('Relay', 'System busy notification failed', { userId: uid, error: e?.message || String(e) }));
     return null;
   }
 }
 
-/**
- * 标记消息已送达
- * @param {Object} env - 环境变量
- * @param {string} chatId - 聊天 ID
- * @param {string} messageId - 消息 ID
- */
 async function markDelivered(env, chatId, messageId) {
   try {
     await api(env.BOT_TOKEN, "setMessageReaction", {
@@ -171,5 +154,7 @@ async function markDelivered(env, chatId, messageId) {
       reaction: [{ type: "emoji", emoji: DELIVERED_REACTION }],
       is_big: false
     });
-  } catch {}
+  } catch (e) {
+    log.debug('Relay', 'Set delivered reaction failed', { chatId, messageId, error: e?.message || String(e) });
+  }
 }

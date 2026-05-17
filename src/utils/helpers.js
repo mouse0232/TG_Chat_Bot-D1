@@ -1,3 +1,5 @@
+import { log } from './logger.js';
+
 /**
  * 通用辅助函数
  */
@@ -175,10 +177,10 @@ export function parseIdsToSet(str) {
 export function safeWaitUntil(ctx, p) {
   try {
     if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p);
-    else p.catch(() => {});
+    else p.catch(e => log.debug('Helpers', 'WaitUntil promise rejected', { error: e?.message || String(e) }));
   } catch {
     try {
-      p.catch(() => {});
-    } catch {}
+      p.catch(e => log.debug('Helpers', 'WaitUntil promise rejected (fallback)', { error: e?.message || String(e) }));
+    } catch(e) { log.debug('Helpers', 'WaitUntil fallback also failed', { error: e?.message || String(e) }); }
   }
 }

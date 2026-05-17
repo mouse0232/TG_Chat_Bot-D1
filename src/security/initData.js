@@ -3,6 +3,7 @@
  */
 
 import { strToBytes, hmacSha256Bytes, bytesToHex, timingSafeEqualHex } from '../utils/helpers.js';
+import { log } from '../utils/logger.js';
 
 /**
  * 验证 Telegram WebApp initData
@@ -45,7 +46,7 @@ export async function verifyTelegramInitData(initData, botToken, maxAgeSec) {
       userObj = JSON.parse(userJson);
       if (userObj && (userObj.id || userObj.id === 0)) userId = userObj.id.toString();
     }
-  } catch {}
+  } catch(e) { log.warn('InitData', 'User JSON parse failed', { error: e.message }); }
 
   return { userId, authDate, userObj };
 }

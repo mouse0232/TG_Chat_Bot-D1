@@ -8,15 +8,11 @@ import { getBoolConfig, getConfig } from '../database/config.js';
 import { checkSubmitRateLimit } from '../security/rateLimit.js';
 import { verifyTelegramInitData } from '../security/initData.js';
 import { VERIFY_NONCE_TTL_MS } from '../utils/constants.js';
+import { log, logError, BusinessError } from '../utils/logger.js';
 
-/**
- * 处理 Token 提交
- * @param {Request} req - 请求对象
- * @param {Object} env - 环境变量
- * @param {Object} ctx - Worker 上下文
- * @returns {Response}
- */
 export async function handleTokenSubmit(req, env, ctx) {
+  const requestId = ctx?.requestId;
+  let uid = '';
   try {
     const body = await req.json();
     const token = body?.token;
@@ -25,28 +21,24 @@ export async function handleTokenSubmit(req, env, ctx) {
     const initData = (body?.initData || "").toString();
     const mode = await getConfig("captcha_mode", env);
 
-    // 先做 IP 级限流
     const rlPre = await checkSubmitRateLimit(req, env, ctx, "");
-    if (!rlPre.allowed) throw new Error("Rate limited");
+    if (!rlPre.allowed) throw new BusinessError("Rate limited", "rate_limited");
 
-    // 必须 initData 且验签成功
-    if (!initData || initData.length < 20) throw new Error("Missing initData");
+    if (!initData || initData.length < 20) throw new BusinessError("Missing initData", "missing_init_data");
     const parsed = await verifyTelegramInitData(initData, env.BOT_TOKEN, 600);
-    const uid = parsed?.userId?.toString();
-    if (!uid) throw new Error("Missing uid");
+    uid = parsed?.userId?.toString();
+    if (!uid) throw new BusinessError("Missing uid", "missing_uid");
 
-    // uid 级限流
     const rlUid = await checkSubmitRateLimit(req, env, ctx, uid);
-    if (!rlUid.allowed) throw new Error("Rate limited");
+    if (!rlUid.allowed) throw new BusinessError("Rate limited", "rate_limited");
 
-    if (uiUserId && uiUserId !== uid) throw new Error("uid mismatch");
+    if (uiUserId && uiUserId !== uid) throw new BusinessError("uid mismatch", "uid_mismatch");
 
     const u = await getUser(uid, env);
 
-    // 屏蔽用户不允许验证推进（管理员除外）
     if (u.is_blocked) {
       const { isAuthAdmin } = await import('../utils/cache.js');
-      if (!(await isAuthAdmin(uid, env))) throw new Error("blocked");
+      if (!(await isAuthAdmin(uid, env))) throw new BusinessError("blocked", "blocked");
     }
 
     const savedNonce = (u.user_info?.verify_nonce || "").toString();
@@ -60,7 +52,7 @@ export async function handleTokenSubmit(req, env, ctx) {
 
     const vOn = await getBoolConfig("enable_verify", env);
     if (vOn) {
-      if (!nonce || !savedNonce || expired || nonce !== savedNonce) throw new Error("nonce invalid");
+      if (!nonce || !savedNonce || expired || nonce !== savedNonce) throw new BusinessError("nonce invalid", "nonce_invalid");
       await updateUser(uid, { user_info: { verify_nonce: "", verify_nonce_ts: 0 } }, env);
     }
 
@@ -81,7 +73,7 @@ export async function handleTokenSubmit(req, env, ctx) {
 
     const r = await fetch(verifyUrl, { method: "POST", headers, body: params });
     const d = await r.json();
-    if (!d.success) throw new Error("Token Invalid");
+    if (!d.success) throw new BusinessError("Token Invalid", "token_invalid");
 
     try {
       if (parsed?.userObj) {
@@ -92,25 +84,32 @@ export async function handleTokenSubmit(req, env, ctx) {
         if (parsed.authDate) patch.join_date = parsed.authDate;
         if (Object.keys(patch).length) await updateUser(uid, { user_info: patch }, env);
       }
-    } catch {}
+    } catch (e) {
+      log.warn('TokenSubmit', 'User info update skipped', { uid, requestId, error: e.message });
+    }
 
     const qaOn = await getBoolConfig("enable_qa_verify", env);
     if (qaOn) {
       await updateUser(uid, { user_state: "pending_verification" }, env);
-      await api(env.BOT_TOKEN, "sendMessage", { 
-        chat_id: uid, 
-        text: "✅ 验证通过！\n请继续回答：\n" + (await getConfig("verif_q", env)) 
+      await api(env.BOT_TOKEN, "sendMessage", {
+        chat_id: uid,
+        text: "✅ 验证通过！\n请继续回答：\n" + (await getConfig("verif_q", env))
       });
     } else {
       await updateUser(uid, { user_state: "verified" }, env);
-      await api(env.BOT_TOKEN, "sendMessage", { 
-        chat_id: uid, 
-        text: "✅ 验证通过！\n请直接发送消息以联系管理员。" 
+      await api(env.BOT_TOKEN, "sendMessage", {
+        chat_id: uid,
+        text: "✅ 验证通过！\n请直接发送消息以联系管理员。"
       });
     }
 
     return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } });
-  } catch {
-    return new Response(JSON.stringify({ success: false }), { status: 400, headers: { "Content-Type": "application/json" } });
+  } catch (e) {
+    if (e instanceof BusinessError) {
+      log.warn('TokenSubmit', e.message, { uid, code: e.code, requestId });
+      return new Response(JSON.stringify({ success: false, error: e.code }), { status: 400, headers: { "Content-Type": "application/json" } });
+    }
+    logError('TokenSubmit', 'Unexpected error', e, { uid, requestId });
+    return new Response(JSON.stringify({ success: false, error: 'server_error' }), { status: 500, headers: { "Content-Type": "application/json" } });
   }
 }

@@ -10,6 +10,7 @@ import { isAuthAdmin } from '../utils/cache.js';
 import { safeParse } from '../utils/helpers.js';
 import { updateUser } from '../database/users.js';
 import { trustUser, untrustUser } from '../database/trust.js';
+import { log } from '../utils/logger.js';
 
 /**
  * 处理管理员回复
@@ -44,7 +45,7 @@ export async function handleAdminReply(msg, env) {
           text: meta.card,
           parse_mode: "HTML",
           reply_markup: getBtns(state.target, u.is_blocked)
-        }).catch(() => {});
+        }).catch(e => log.warn('AdminReply', 'update card failed', { error: e?.message || String(e) }));
       }
       return api(env.BOT_TOKEN, "sendMessage", { 
         chat_id: msg.chat.id, 
@@ -79,11 +80,12 @@ export async function handleAdminReply(msg, env) {
 
   try {
     await api(env.BOT_TOKEN, "copyMessage", { chat_id: uid, from_chat_id: msg.chat.id, message_id: msg.message_id });
-  } catch {
+  } catch(e) {
+    log.warn('AdminReply', 'copy message to user failed', { uid, error: e?.message || String(e) });
     api(env.BOT_TOKEN, "sendMessage", { 
       chat_id: msg.chat.id, 
       message_thread_id: msg.message_thread_id, 
       text: "❌ 发送失败 (用户可能已停止Bot)" 
-    }).catch(() => {});
+    }).catch(e2 => log.warn('AdminReply', 'send error notice to admin failed', { error: e2?.message || String(e2) }));
   }
 }

@@ -3,6 +3,7 @@
  */
 
 import { REGEX_MAX_PATTERN_LEN, REGEX_MAX_TEXT_LEN, REGEX_REJECT_PATTERNS } from '../utils/constants.js';
+import { log } from '../utils/logger.js';
 
 /**
  * 安全正则测试
@@ -24,7 +25,5 @@ export function safeRegexTest(pattern, text) {
     const t2 = t.length > REGEX_MAX_TEXT_LEN ? t.slice(0, REGEX_MAX_TEXT_LEN) : t;
 
     return new RegExp(p, "gi").test(t2);
-  } catch {
-    return false;
-  }
+  } catch(e) { log.warn('RegexGuard', 'Regex test failed, allowing', { error: e.message }); return false; }
 }

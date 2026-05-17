@@ -9,6 +9,7 @@ import { handleTokenSubmit } from '../handlers/tokenSubmit.js';
 import { isTelegramWebhook } from '../security/webhook.js';
 import { markUpdateOnce } from '../security/idempotency.js';
 import { safeWaitUntil } from '../utils/helpers.js';
+import { genRequestId, log, logError } from '../utils/logger.js';
 
 /**
  * 路由分发请求
@@ -19,6 +20,7 @@ import { safeWaitUntil } from '../utils/helpers.js';
  */
 export async function route(req, env, ctx) {
   const url = new URL(req.url);
+  if (req.method === 'POST') ctx.requestId = genRequestId();
 
   try {
     if (req.method === "GET") {
@@ -27,29 +29,26 @@ export async function route(req, env, ctx) {
     }
 
     if (req.method === "POST") {
-      // /submit_token：外部网页回调，不走 webhook secret，但必须限流 + 强验签
       if (url.pathname === "/submit_token") return handleTokenSubmit(req, env, ctx);
 
-      // Webhook secret_token 校验：拒绝非 Telegram
       if (!isTelegramWebhook(req, env)) {
         return new Response("Forbidden", { status: 403 });
       }
 
       try {
         const update = await req.json();
-
-        // update 幂等去重
         const ok = await markUpdateOnce(update, env, ctx);
         if (!ok) return new Response("OK");
 
         ctx.waitUntil(handleUpdate(update, env, ctx));
         return new Response("OK");
       } catch {
+        log.warn('Worker', 'Invalid request body', { requestId: ctx.requestId });
         return new Response("Bad Request", { status: 400 });
       }
     }
   } catch (e) {
-    console.error("Critical Worker Error:", e);
+    logError('Worker', 'Critical error', e, { requestId: ctx?.requestId });
     return new Response("Internal Server Error", { status: 500 });
   }
 

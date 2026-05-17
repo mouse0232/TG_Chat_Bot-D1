@@ -8,6 +8,7 @@ import { sql } from '../database/index.js';
 import { escapeHTML, safeParse } from '../utils/helpers.js';
 import { checkAiConnectivity, checkTmsConnectivity } from '../security/connectivityCheck.js';
 import { checkAllPermissions, formatPermissionReport } from '../services/permissionCheck.js';
+import { log, logError } from '../utils/logger.js';
 
 /**
  * 处理管理面板
@@ -156,9 +157,9 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
 
     if (type === "check") {
       if (key === "ai") {
-        console.error("[CHECK_AI] Starting connectivity check");
+        log.debug('Config', 'starting AI connectivity check');
         const result = await checkAiConnectivity(env);
-        console.error("[CHECK_AI] Result:", JSON.stringify(result));
+        log.debug('Config', 'AI connectivity check result', { result });
         if (result.ok) {
           return render(`\u{1F916} AI \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF6\u65F6: ${result.latencyMs}ms\nLLM API \u53EF\u6B63\u5E38\u8C03\u7528`, {
             inline_keyboard: [[{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }]]
@@ -170,9 +171,9 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
       }
 
       if (key === "tms") {
-        console.error("[CHECK_TMS] Starting connectivity check");
+        log.debug('Config', 'starting TMS connectivity check');
         const result = await checkTmsConnectivity(env);
-        console.error("[CHECK_TMS] Result:", JSON.stringify(result));
+        log.debug('Config', 'TMS connectivity check result', { result });
         if (result.ok) {
           const detail = result.label ? `\nLabel: ${result.label}\nSuggestion: ${result.suggestion}` : "";
           return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF6\u65F6: ${result.latencyMs}ms${detail}\nTMS API \u53EF\u6B63\u5E38\u8C03\u7528`, {
@@ -185,7 +186,7 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
       }
 
       if (key === "perms") {
-        console.error("[CHECK_PERMS] Starting permission check");
+        log.debug('Config', 'starting permission check');
         
         const loadingMsg = await api(env.BOT_TOKEN, "sendMessage", {
           chat_id: cid,
@@ -199,9 +200,9 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
         const editMsgId = loadingMsg.message_id;
 
         try {
-          console.error("[CHECK_PERMS] Calling checkAllPermissions");
+          log.debug('Config', 'calling checkAllPermissions');
           const result = await checkAllPermissions(env);
-          console.error("[CHECK_PERMS] Result:", JSON.stringify(result));
+          log.debug('Config', 'permission check result', { result });
           
           const reportHtml = formatPermissionReport(result);
           
@@ -218,7 +219,7 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
             }
           });
         } catch (e) {
-          console.error("[CHECK_PERMS] Error:", e);
+          logError('Config', 'permission check failed', e);
           await api(env.BOT_TOKEN, "editMessageText", {
             chat_id: cid,
             message_id: editMsgId,
@@ -330,7 +331,7 @@ toast = "验证已关闭";
       return render(`基础配置已更新\n${toast}`, { inline_keyboard: [[back]] });
     }
   } catch (e) {
-    console.error("handleAdminConfig error:", e);
+    logError('Config', 'handler failed', e);
   }
 }
 
@@ -388,10 +389,10 @@ export async function handleAdminInput(id, msg, state, env) {
     await setConfig(k, val, env);
     await sql(env, "DELETE FROM config WHERE key=?", `admin_state:${id}`);
     const displayVal = val.startsWith("{") && k === "welcome_msg" ? "[媒体配置]" : val.substring(0, 100);
-    await api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: `✅ ${k} 已更新:\n${displayVal}` }).catch(() => {});
+    await api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: `✅ ${k} 已更新:\n${displayVal}` }).catch(e => log.warn('Config', 'send update confirmation failed', { error: e?.message || String(e) }));
     await handleAdminConfig(id, null, "menu", null, null, env);
   } catch (e) {
-    api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: `❌ 失败: ${e.message}` }).catch(() => {});
+    api(env.BOT_TOKEN, "sendMessage", { chat_id: id, text: `❌ 失败: ${e.message}` }).catch(e2 => log.warn('Config', 'send error message failed', { error: e2?.message || String(e2) }));
   }
 }
 

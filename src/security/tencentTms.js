@@ -4,6 +4,8 @@
  * Cloudflare Workers 环境下使用 Web Crypto API
  */
 
+import { log } from '../utils/logger.js';
+
 const TMS_SERVICE = "tms";
 const TMS_HOST = "tms.tencentcloudapi.com";
 const TMS_ACTION = "TextModeration";
@@ -74,7 +76,7 @@ export async function callTmsApi(env, content) {
   const region = env.TENCENT_TMS_REGION || TMS_REGION_DEFAULT;
   const timestamp = Math.floor(Date.now() / 1000);
 
-  console.error("[TMS] Calling API, region:", region, "text:", content.substring(0, 50));
+  log.debug('TMS', 'API call starting', { region, contentLen: content?.length });
 
   const payload = JSON.stringify({ Content: btoa(content) });
   const authorization = await signRequest(secretId, secretKey, payload, timestamp);
@@ -101,7 +103,7 @@ export async function callTmsApi(env, content) {
     clearTimeout(timer);
 
     const data = await response.json();
-    console.error("[TMS] Response status:", response.status, "data:", JSON.stringify(data).substring(0, 200));
+    log.debug('TMS', 'API response received', { status: response.status, hasError: !!data.Response?.Error });
 
     if (!response.ok) {
       throw new Error(`TMS API returned ${response.status}: ${response.statusText}`);

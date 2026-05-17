@@ -10,6 +10,8 @@
  * @param {Object} body - 请求体
  * @returns {Promise<*>}
  */
+import { log } from '../utils/logger.js';
+
 export async function api(token, method, body) {
   const maxRetries = 3;
   const baseBackoff = [200, 500, 1200];
@@ -24,7 +26,7 @@ export async function api(token, method, body) {
         body: JSON.stringify(body)
       });
 
-      const d = await r.json().catch(() => null);
+      const d = await r.json().catch(e => { log.debug('TG', 'JSON parse failed', { method }); return null; });
 
       if (r.status >= 500) throw new Error(`HTTP_${r.status}`);
 
@@ -41,7 +43,7 @@ export async function api(token, method, body) {
         }
 
         const desc = d?.description || `TG API Error (${errCode})`;
-        if (method !== "setMessageReaction") console.warn(`TG API Error [${method}]:`, desc);
+        if (method !== "setMessageReaction") log.warn('TG', 'API error', { method, desc });
         throw new Error(desc);
       }
 
@@ -54,7 +56,7 @@ export async function api(token, method, body) {
         await sleep(delayMs);
         continue;
       }
-      if (method !== "setMessageReaction") console.warn(`TG API Fail [${method}]:`, e?.message || e);
+      if (method !== "setMessageReaction") log.error('TG', 'API call failed', { method, error: e?.message || String(e) });
       throw e;
     }
   }

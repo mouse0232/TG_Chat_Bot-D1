@@ -5,6 +5,7 @@
 import { api } from '../api/telegram.js';
 import { getUser } from '../database/users.js';
 import { escapeHTML } from '../utils/helpers.js';
+import { log } from '../utils/logger.js';
 
 /**
  * 处理用户编辑消息
@@ -20,6 +21,6 @@ export async function handleEdit(msg, env) {
       message_thread_id: u.topic_id,
       text: `✏️ <b>用户修改了消息:</b>\n${escapeHTML(txt)}`,
       parse_mode: "HTML"
-    }).catch(() => {});
+    }).catch(e => log.warn('Edit', 'send edit notification failed', { error: e?.message || String(e) }));
   }
 }

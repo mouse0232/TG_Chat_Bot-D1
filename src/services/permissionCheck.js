@@ -3,6 +3,7 @@
  */
 
 import { api } from '../api/telegram.js';
+import { log } from '../utils/logger.js';
 
 /**
  * 带超时的 API 调用
@@ -63,7 +64,9 @@ async function checkBotPermissions(env) {
             chat_id: env.ADMIN_GROUP_ID,
             message_id: testMsg.message_id
           }, 2000);
-        } catch {}
+        } catch (e) {
+          log.warn('Permission', 'Check item failed', { item: 'deleteMessage', error: e.message });
+        }
       } catch (e) {
         result.errors.push(`消息发送权限受限：${e.message}`);
       }

@@ -4,6 +4,7 @@ import { updateUser } from '../database/users.js';
 import { manageBlacklist } from '../services/blacklist.js';
 import { api } from '../api/telegram.js';
 import { SPAM_SYSTEM_PROMPT, SPAM_USER_PROMPT_TEMPLATE, fillPromptTemplate } from './aiSpamPrompt.js';
+import { log, logError } from '../utils/logger.js';
 
 const SPAM_INTERCEPT_MSG = "您的消息因包含垃圾信息已被过滤。如有疑问，请联系管理员。";
 
@@ -36,7 +37,7 @@ export async function checkAiSpam(msg, user, env) {
     }
     return { spam: false, skipped: false };
   } catch (error) {
-    console.error('[AiAntiHarassment] LLM API call failed:', error);
+    logError('AiAntiHarass', 'LLM API call failed', error);
     return { spam: false, skipped: false, error: true };
   }
 }
@@ -82,7 +83,7 @@ export async function callLlmApi(env, systemPrompt, userPrompt) {
 }
 
 export async function handleAiSpamIntercept(userId, userInfo, reason, env) {
-  console.log(`[AiAntiHarassment] User ${userId} AI spam intercepted. Reason: ${reason}`);
+  log.info('AiAntiHarass', 'AI spam intercepted', { userId, reason });
   try {
     await recordSpam(userId, env);
     await updateUser(userId, { is_blocked: true, user_info: { ai_spam_reason: reason } }, env);
@@ -92,7 +93,7 @@ export async function handleAiSpamIntercept(userId, userInfo, reason, env) {
     await api(env.BOT_TOKEN, "sendMessage", {
       chat_id: userId,
       text: SPAM_INTERCEPT_MSG
-    }).catch(() => {});
+    }).catch(e => log.debug('AiAntiHarass', 'Notification skipped', { userId, error: e?.message }));
 
     if (env.ADMIN_GROUP_ID) {
       const now = new Date();
@@ -105,10 +106,10 @@ export async function handleAiSpamIntercept(userId, userInfo, reason, env) {
         chat_id: env.ADMIN_GROUP_ID,
         text: `🚨 AI 垃圾信息警告\n\n发送者: ${senderName}${uname} (ID: ${userId})\nAI 判定: SPAM:${reason}\n时间: ${timeStr}`,
         parse_mode: "HTML"
-      }).catch(() => {});
+      }).catch(e => log.debug('AiAntiHarass', 'Notification skipped', { userId, error: e?.message }));
     }
   } catch (error) {
-    console.error(`[AiAntiHarassment] AI spam intercept failed for ${userId}:`, error);
+    logError('AiAntiHarass', 'Intercept failed', error, { userId });
   }
 }
 
@@ -117,11 +118,11 @@ export async function handleAiCleanPass(userId, env) {
     await incrementCleanCount(userId, env);
     const promoted = await checkAndPromoteToWhitelist(userId, env);
     if (promoted) {
-      console.log(`[AiAntiHarassment] User ${userId} promoted to AI trust list`);
+      log.info('AiAntiHarass', 'User promoted to trust', { userId });
     }
     return promoted;
   } catch (error) {
-    console.error(`[AiAntiHarassment] Clean pass processing failed for ${userId}:`, error);
+    logError('AiAntiHarass', 'Clean pass failed', error, { userId });
     return false;
   }
 }

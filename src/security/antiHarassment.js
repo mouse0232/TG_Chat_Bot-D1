@@ -8,6 +8,7 @@ import { updateUser } from '../database/users.js';
 import { getUser } from '../database/users.js';
 import { api } from '../api/telegram.js';
 import { manageBlacklist } from '../services/blacklist.js';
+import { log, logError } from '../utils/logger.js';
 
 const INTERCEPT_MSG = "❌ 您不符合聊天对象要求，无法使用本 Bot。";
 
@@ -78,7 +79,7 @@ export async function checkUser(user, env) {
     }
 
     if (rule.action === "intercept" && rule.check(user)) {
-      console.log(`[AntiHarassment] User ${user.id} triggered rule: ${rule.name} (${rule.reason})`);
+      log.info('AntiHarass', 'Rule triggered', { userId: user.id, rule: rule.name, reason: rule.reason });
       return { triggered: true, reason: rule.reason, rule: rule.name };
     }
   }
@@ -96,7 +97,7 @@ export async function checkMessage(msg, env) {
     if (!ruleEnabled) continue;
 
     if (rule.check(msg)) {
-      console.log(`[AntiHarassment] Message from user ${msg.from?.id} triggered rule: ${rule.name} (${rule.reason})`);
+      log.info('AntiHarass', 'Rule triggered', { userId: msg.from?.id, rule: rule.name, reason: rule.reason });
       return { triggered: true, reason: rule.reason, rule: rule.name };
     }
   }
@@ -105,19 +106,19 @@ export async function checkMessage(msg, env) {
 }
 
 export async function handleUserIntercept(userId, reason, env) {
-  console.log(`[AntiHarassment] User ${userId} intercepted (user). Reason: ${reason}`);
+  log.info('AntiHarass', 'User intercepted', { userId, reason });
   try {
     await api(env.BOT_TOKEN, "sendMessage", {
       chat_id: userId,
       text: INTERCEPT_MSG
-    }).catch(() => {});
+    }).catch(e => log.debug('AntiHarass', 'Intercept notification skipped', { userId, error: e?.message }));
   } catch (error) {
-    console.error(`[AntiHarassment] User intercept failed for ${userId}:`, error);
+    logError('AntiHarass', 'Intercept failed', error, { userId });
   }
 }
 
 export async function handleMessageIntercept(userId, userInfo, reason, env) {
-  console.log(`[AntiHarassment] User ${userId} intercepted (message). Reason: ${reason}`);
+  log.info('AntiHarass', 'User intercepted', { userId, reason });
   try {
     await updateUser(userId, { is_blocked: true, user_info: { anti_harassment_reason: reason } }, env);
     const u = await getUser(userId, env);
@@ -125,8 +126,8 @@ export async function handleMessageIntercept(userId, userInfo, reason, env) {
     await api(env.BOT_TOKEN, "sendMessage", {
       chat_id: userId,
       text: INTERCEPT_MSG
-    }).catch(() => {});
+    }).catch(e => log.debug('AntiHarass', 'Intercept notification skipped', { userId, error: e?.message }));
   } catch (error) {
-    console.error(`[AntiHarassment] Message intercept failed for ${userId}:`, error);
+    logError('AntiHarass', 'Intercept failed', error, { userId });
   }
 }

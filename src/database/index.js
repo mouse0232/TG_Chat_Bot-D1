@@ -3,45 +3,29 @@
  * 提供 D1 数据库连接、SQL 执行和表初始化
  */
 
-/**
- * 执行 SQL 查询
- * @param {Object} env - 环境变量
- * @param {string} query - SQL 语句
- * @param {Array} args - 参数
- * @param {string} type - 查询类型 (run/first/all)
- * @returns {Promise<*>}
- */
+import { log, logError, sqlOp, sqlTable } from '../utils/logger.js';
+
 export async function sql(env, query, args = [], type = "run") {
   try {
     const stmt = env.TG_BOT_DB.prepare(query).bind(...(Array.isArray(args) ? args : [args]));
     return type === "run" ? await stmt.run() : await stmt[type]();
   } catch (e) {
-    console.error(`SQL Fail [${query}]:`, e);
+    logError('DB', 'SQL failed', e, { op: sqlOp(query), table: sqlTable(query) });
     if (query.match(/^(INSERT|UPDATE|DELETE|REPLACE|ALTER|CREATE)/i)) throw e;
     return null;
   }
 }
 
-/**
- * 尝试执行 SQL（失败不抛异常）
- * @param {Object} env - 环境变量
- * @param {string} query - SQL 语句
- * @param {Array} args - 参数
- * @returns {Promise<*>}
- */
 export async function tryRun(env, query, args = []) {
   try {
     const stmt = env.TG_BOT_DB.prepare(query).bind(...(Array.isArray(args) ? args : [args]));
     return await stmt.run();
-  } catch {
+  } catch (e) {
+    log.warn('DB', 'tryRun failed', { op: sqlOp(query), table: sqlTable(query), error: e.message });
     return null;
   }
 }
 
-/**
- * 初始化数据库表结构
- * @param {Object} env - 环境变量
- */
 export async function dbInit(env) {
   if (!env.TG_BOT_DB) return;
 
@@ -96,10 +80,6 @@ export async function dbInit(env) {
   await ensureUserColumns(env);
 }
 
-/**
- * 确保 users 表包含所有必要列
- * @param {Object} env - 环境变量
- */
 async function ensureUserColumns(env) {
   const info = await sql(env, "PRAGMA table_info(users)", [], "all");
   const cols = new Set((info?.results || []).map(r => r.name));
@@ -111,6 +91,8 @@ async function ensureUserColumns(env) {
   for (const q of alters) {
     try {
       await sql(env, q);
-    } catch {}
+    } catch (e) {
+      log.info('DB', 'Column migration skipped', { column: q.match(/ADD COLUMN (\w+)/)?.[1], error: e.message });
+    }
   }
 }
