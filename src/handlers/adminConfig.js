@@ -130,7 +130,6 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
             [back]
           ]
         });
-}
       }
 
       if (key === "green") {
@@ -155,6 +154,8 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
         });
       }
 
+    }
+
     if (type === "check") {
       if (key === "ai") {
         log.debug('Config', 'starting AI connectivity check');
@@ -170,22 +171,18 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
         });
       }
 
-if (key === "green") {
+      if (key === "green") {
         log.debug('Config', 'starting Green connectivity check');
         const result = await checkGreenConnectivity(env);
         log.debug('Config', 'Green connectivity check result', { result });
         if (result.ok) {
           const detail = result.riskLevel ? `\nRiskLevel: ${result.riskLevel}` : '';
-          return render(`\u{1F6E1} Green \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF0\u65F6: ${result.latencyMs}ms${detail}\nGreen API \u53EF\u6B63\u5E38\u8C03\u7528`, {
+          return render(`\u{1F6E1} Green \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF6\u65F6: ${result.latencyMs}ms${detail}\nGreen API \u53EF\u6B63\u5E38\u8C03\u7528`, {
             inline_keyboard: [[{ text: "\u{1F6E1} Green\u53CD\u9A9A\u6311", callback_data: "config:menu:green" }]]
           });
         }
-        return render(`\u{1F6E1} Green \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF0\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 ALIYUN_ACCESS_KEY_ID/SECRET \u662F\u5426\u6B63\u786E\n2. \u786E\u8BA4\u963B\u91CC\u4E91\u5185\u5BB9\u5B89\u5168\u670D\u52A1\u5DF2\u5F00\u901A\n3. \u68C0\u67E5 ALIYUN_GREEN_REGION \u503C\u662F\u5426\u6B63\u786E`, {
+        return render(`\u{1F6E1} Green \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF6\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 ALIYUN_ACCESS_KEY_ID/SECRET \u662F\u5426\u6B63\u786E\n2. \u786E\u8BA4\u963B\u91CC\u4E91\u5185\u5BB9\u5B89\u5168\u670D\u52A1\u5DF2\u5F00\u901A\n3. \u68C0\u67E5 ALIYUN_GREEN_REGION \u503C\u662F\u5426\u6B63\u786E`, {
           inline_keyboard: [[{ text: "\u{1F6E1} Green\u53CD\u9A9A\u6311", callback_data: "config:menu:green" }]]
-        });
-      }
-        return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF6\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 TENCENT_SECRET_ID/KEY \u662F\u5426\u6B63\u786E\n2. \u786E\u8BA4\u817E\u8BAF\u4E91 TMS \u670D\u52A1\u5DF2\u5F00\u901A\n3. \u68C0\u67E5 TENCENT_TMS_REGION \u503A\u662F\u5426\u6B63\u786E`, {
-          inline_keyboard: [[{ text: "\u{1F6E1} TMS\u53CD\u9A9A\u6311", callback_data: "config:menu:tms" }]]
         });
       }
 
