@@ -6,7 +6,7 @@ import { api } from '../api/telegram.js';
 import { getConfig, setConfig, getBoolConfig, getJsonConfig } from '../database/config.js';
 import { sql } from '../database/index.js';
 import { escapeHTML, safeParse } from '../utils/helpers.js';
-import { checkAiConnectivity, checkTmsConnectivity } from '../security/connectivityCheck.js';
+import { checkAiConnectivity, checkGreenConnectivity } from '../security/connectivityCheck.js';
 import { checkAllPermissions, formatPermissionReport } from '../services/permissionCheck.js';
 import { log, logError } from '../utils/logger.js';
 
@@ -40,7 +40,8 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
             [{ text: "👮 协管", callback_data: "config:menu:auth" }, { text: "💾 备份/通知", callback_data: "config:menu:bak" }],
             [{ text: "\u{1F319} \u8425\u4E1A\u72B6\u6001", callback_data: "config:menu:busy" }, { text: "\u{1F6E1} \u53CD\u9A9A\u6311", callback_data: "config:menu:ah" }],
             [{ text: "\u{1F916} AI\u53CD\u9A9A\u6311", callback_data: "config:menu:aiah" }],
-            [{ text: "🔐 权限检测", callback_data: "config:check:perms" }]
+            [{ text: "\u{1F6E1} Green\u53CD\u9A9A\u6311", callback_data: "config:menu:green" }],
+            [{ text: "权限检测", callback_data: "config:check:perms" }]
           ]
         });
 
@@ -132,28 +133,27 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
 }
       }
 
-      // TMS 入口已暂时禁用
-      /*
-      if (key === "tms") {
-        const tmsEnabled = await getBoolConfig("enable_tencent_tms", env);
-        const threshold = await getConfig("tencent_tms_trust_threshold", env) || 3;
-        const notifyAuto = await getBoolConfig("tencent_tms_notify_auto_whitelist", env);
-        const reviewThreshold = await getConfig("tencent_tms_review_block_threshold", env) || 60;
+      if (key === "green") {
+        const greenEnabled = await getBoolConfig("enable_aliyun_green", env);
+        const threshold = await getConfig("aliyun_green_trust_threshold", env) || 3;
+        const notifyAuto = await getBoolConfig("aliyun_green_notify_auto_whitelist", env);
+        const mediumThreshold = await getConfig("aliyun_green_medium_block_threshold", env) || 80;
         const t = (v) => v ? "✅" : "❌";
-        const secretReady = !!env.TENCENT_SECRET_ID && !!env.TENCENT_SECRET_KEY;
+        const secretReady = !!env.ALIYUN_ACCESS_KEY_ID && !!env.ALIYUN_ACCESS_KEY_SECRET;
         const secretStatus = secretReady ? "✅ 已配置" : "❌ 未配置密钥";
-        return render(`🛡 <b>TMS 反骚扰检测</b>\n总开关：${t(tmsEnabled)}\n密钥配置：${secretStatus}\n信任阈值：当日连续通过 ${threshold} 次\nReview 拦截阈值：Score >= ${reviewThreshold}\n加信通知：${t(notifyAuto)}\n\n<b>说明</b>\n- 腾讯 TMS 毫秒级响应，延时远低于 AI\n- 与 AI 反骚扰<b>互斥</b>，开启 TMS 自动关闭 AI\n- 信任列表与 AI 共享<b>同一套</b>${!secretReady ? "\n\n⚠️ <b>请先配置密钥再开启</b>" : ""}`, {
+        const service = env.ALIYUN_GREEN_SERVICE || "ugc_moderation_byllm_cb";
+        const region = env.ALIYUN_GREEN_REGION || "ap-southeast-1";
+        return render(`\u{1F6E1} <b>Green 反骚扰检测</b>\n总开关: ${t(greenEnabled)}\n密钥配置: ${secretStatus}\n服务类型: ${service}\n使用地域: ${region}\n信任阈值: 当日连续通过 ${threshold} 次\nMedium拦截阈值: Confidence >= ${mediumThreshold}\n加信通知: ${t(notifyAuto)}\n\n<b>说明</b>\n- 阿里云Green出海版支持119种语言\n- 与AI反骚扰<b>互斥</b>，开启Green自动关闭AI\n- 信任列表与AI共享<b>同一套</b>${!secretReady ? "\n\n\u26A0\uFE0F <b>请先配置密钥再开启</b>" : ""}`, {
           inline_keyboard: [
-            [{ text: `总开关：${t(tmsEnabled)}${!secretReady && !tmsEnabled ? " (需先配置密钥)" : ""}`, callback_data: `config:toggle:enable_tencent_tms:${!tmsEnabled}` }],
-            [{ text: `信任阈值：${threshold}`, callback_data: `config:edit:tencent_tms_trust_threshold` }],
-            [{ text: `Review 阈值：${reviewThreshold}`, callback_data: `config:edit:tencent_tms_review_block_threshold` }],
-            [{ text: `加信通知：${t(notifyAuto)}`, callback_data: `config:toggle:tencent_tms_notify_auto_whitelist:${!notifyAuto}` }],
-            [{ text: "🔍 检测连通性", callback_data: "config:check:tms" }],
+            [{ text: `总开关: ${t(greenEnabled)}${!secretReady && !greenEnabled ? " (需先配置密钥)" : ""}`, callback_data: `config:toggle:enable_aliyun_green:${!greenEnabled}` }],
+            [{ text: `信任阈值: ${threshold}`, callback_data: `config:edit:aliyun_green_trust_threshold` }],
+            [{ text: `Medium阈值: ${mediumThreshold}`, callback_data: `config:edit:aliyun_green_medium_block_threshold` }],
+            [{ text: `加信通知: ${t(notifyAuto)}`, callback_data: `config:toggle:aliyun_green_notify_auto_whitelist:${!notifyAuto}` }],
+            [{ text: "检测连通性", callback_data: "config:check:green" }],
             [back]
           ]
         });
       }
-      */
 
     if (type === "check") {
       if (key === "ai") {
@@ -170,16 +170,20 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
         });
       }
 
-      if (key === "tms") {
-        log.debug('Config', 'starting TMS connectivity check');
-        const result = await checkTmsConnectivity(env);
-        log.debug('Config', 'TMS connectivity check result', { result });
+if (key === "green") {
+        log.debug('Config', 'starting Green connectivity check');
+        const result = await checkGreenConnectivity(env);
+        log.debug('Config', 'Green connectivity check result', { result });
         if (result.ok) {
-          const detail = result.label ? `\nLabel: ${result.label}\nSuggestion: ${result.suggestion}` : "";
-          return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF6\u65F6: ${result.latencyMs}ms${detail}\nTMS API \u53EF\u6B63\u5E38\u8C03\u7528`, {
-            inline_keyboard: [[{ text: "\u{1F6E1} TMS\u53CD\u9A9A\u6311", callback_data: "config:menu:tms" }]]
+          const detail = result.riskLevel ? `\nRiskLevel: ${result.riskLevel}` : '';
+          return render(`\u{1F6E1} Green \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2713 \u8FDE\u901A\u6210\u529F\n\u5EF0\u65F6: ${result.latencyMs}ms${detail}\nGreen API \u53EF\u6B63\u5E38\u8C03\u7528`, {
+            inline_keyboard: [[{ text: "\u{1F6E1} Green\u53CD\u9A9A\u6311", callback_data: "config:menu:green" }]]
           });
         }
+        return render(`\u{1F6E1} Green \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF0\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 ALIYUN_ACCESS_KEY_ID/SECRET \u662F\u5426\u6B63\u786E\n2. \u786E\u8BA4\u963B\u91CC\u4E91\u5185\u5BB9\u5B89\u5168\u670D\u52A1\u5DF2\u5F00\u901A\n3. \u68C0\u67E5 ALIYUN_GREEN_REGION \u503C\u662F\u5426\u6B63\u786E`, {
+          inline_keyboard: [[{ text: "\u{1F6E1} Green\u53CD\u9A9A\u6311", callback_data: "config:menu:green" }]]
+        });
+      }
         return render(`\u{1F6E1} TMS \u8FDE\u901A\u6027\u68C0\u6D4B\n\n\u2717 \u8FDE\u901A\u5931\u8D25\n\u5EF6\u65F6: ${result.latencyMs}ms\n\u9519\u8BEF: ${escapeHTML(result.error || "")}\n\n<b>\u5EFA\u8BAE</b>:\n1. \u68C0\u67E5 TENCENT_SECRET_ID/KEY \u662F\u5426\u6B63\u786E\n2. \u786E\u8BA4\u817E\u8BAF\u4E91 TMS \u670D\u52A1\u5DF2\u5F00\u901A\n3. \u68C0\u67E5 TENCENT_TMS_REGION \u503A\u662F\u5426\u6B63\u786E`, {
           inline_keyboard: [[{ text: "\u{1F6E1} TMS\u53CD\u9A9A\u6311", callback_data: "config:menu:tms" }]]
         });
@@ -252,30 +256,30 @@ export async function handleAdminConfig(cid, mid, type, key, val, env) {
           });
         }
       }
-      if (key === "enable_tencent_tms" && val === "true" && (!env.TENCENT_SECRET_ID || !env.TENCENT_SECRET_KEY)) {
-        return render("❌ <b>无法开启 TMS 反骚扰</b>\n\n未配置腾讯云密钥。\n请在 Cloudflare Dashboard 或 wrangler secret 中设置以下变量后重试：\n\n<b>必需</b>:\n• TENCENT_SECRET_ID — 腾讯云 API SecretId\n• TENCENT_SECRET_KEY — 腾讯云 API SecretKey\n\n<b>可选</b>:\n• TENCENT_TMS_REGION — API 地域 (默认 ap-guangzhou)\n• TENCENT_TMS_TIMEOUT_MS — 超时毫秒数 (默认 3000)", {
-          inline_keyboard: [[{ text: "🔙 返回 TMS 反骚扰", callback_data: "config:menu:tms" }]]
+      if (key === "enable_aliyun_green" && val === "true" && (!env.ALIYUN_ACCESS_KEY_ID || !env.ALIYUN_ACCESS_KEY_SECRET)) {
+        return render("❌ <b>无法开启 Green 反骚扰</b>\n\n未配置阿里云密钥。\n请在 Cloudflare Dashboard 或 wrangler secret 中设置以下变量后重试：\n\n<b>必需</b>:\n• ALIYUN_ACCESS_KEY_ID — 阿里云 AccessKey ID\n• ALIYUN_ACCESS_KEY_SECRET — 阿里云 AccessKey Secret\n\n<b>可选</b>:\n• ALIYUN_GREEN_REGION — API 地域 (默认 ap-southeast-1)\n• ALIYUN_GREEN_SERVICE — 检测服务 (默认 ugc_moderation_byllm_cb)\n• ALIYUN_GREEN_TIMEOUT_MS — 超时毫秒数 (默认 5000)", {
+          inline_keyboard: [[{ text: "🔙 返回 Green 反骚扰", callback_data: "config:menu:green" }]]
         });
       }
-      if (key === "enable_tencent_tms" && val === "true") {
-        const check = await checkTmsConnectivity(env);
+      if (key === "enable_aliyun_green" && val === "true") {
+        const check = await checkGreenConnectivity(env);
         if (!check.ok) {
-          return render(`❌ <b>TMS 反骚扰连通性检测失败</b>\n\n无法开启，TMS API 不可达。\n延时: ${check.latencyMs}ms\n错误: ${escapeHTML(check.error || "")}\n\n请先修复连通性问题再开启。`, {
-            inline_keyboard: [[{ text: "🔙 返回 TMS 反骚扰", callback_data: "config:menu:tms" }]]
-        });
+          return render(`❌ <b>Green 反骚扰连通性检测失败</b>\n\n无法开启，Green API 不可达。\n延时: ${check.latencyMs}ms\n错误: ${escapeHTML(check.error || "")}\n\n请先修复连通性问题再开启。`, {
+            inline_keyboard: [[{ text: "🔙 返回 Green 反骚扰", callback_data: "config:menu:green" }]]
+          });
         }
       }
       await setConfig(key, val, env);
-      if (key === "enable_tencent_tms" && val === "true") await setConfig("enable_ai_anti_harassment", "false", env);
-      if (key === "enable_ai_anti_harassment" && val === "true") await setConfig("enable_tencent_tms", "false", env);
+      if (key === "enable_aliyun_green" && val === "true") await setConfig("enable_ai_anti_harassment", "false", env);
+      if (key === "enable_ai_anti_harassment" && val === "true") await setConfig("enable_aliyun_green", "false", env);
       const ahKeys = ["enable_anti_harassment", "anti_harassment_block_bot", "anti_harassment_block_no_username", "anti_harassment_allow_premium", "anti_harassment_block_bot_forward", "anti_harassment_block_inline_keyboard", "anti_harassment_block_mention"];
       const aiAhKeys = ["enable_ai_anti_harassment", "ai_anti_harassment_notify_auto_whitelist"];
-      const tmsKeys = ["enable_tencent_tms", "tencent_tms_notify_auto_whitelist"];
+      const greenKeys = ["enable_aliyun_green", "aliyun_green_notify_auto_whitelist"];
       if (key === "busy_mode") return handleAdminConfig(cid, mid, "menu", "busy", null, env);
       if (key === "enable_qa_verify") return handleAdminConfig(cid, mid, "menu", "base", null, env);
       if (ahKeys.includes(key)) return handleAdminConfig(cid, mid, "menu", "ah", null, env);
       if (aiAhKeys.includes(key)) return handleAdminConfig(cid, mid, "menu", "aiah", null, env);
-      if (tmsKeys.includes(key)) return handleAdminConfig(cid, mid, "menu", "tms", null, env);
+      if (greenKeys.includes(key)) return handleAdminConfig(cid, mid, "menu", "green", null, env);
       return render("🛠 <b>过滤设置</b>", await getFilterKB(env));
     }
 

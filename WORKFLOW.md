@@ -140,7 +140,7 @@
 │  └──────────┘                                              │
 │  ┌──────────┐                                              │
 │  │  user_trust  │                                            │
-│  │(信任表-AI/TMS│                                            │
+│  │(信任表-AI/Green│                                            │
 │  │   共享)     │                                            │
 │  └──────────┘                                              │
 └─────────────────────────────────────────────────────────────┘
@@ -491,7 +491,7 @@
 │  │  配置开关：enable_anti_harassment                     │   │
 │  │  └─────────────────────────────────────────────────── │   │
 │  │                                                      │   │
-│  │  第七层：智能反骚扰检测 (AI/TMS 互斥，与黑白名单完全解耦) │   │
+│  │  第七层：智能反骚扰检测 (AI/Green 互斥，与黑白名单完全解耦) │   │
 │  │  ┌───────────────────────────────────────────────────┐│   │
 │  │  │  信任列表检查（共享同一套 user_trust，仅当日有效）  ││   │
 │  │  │    trusted → 跳过检测（当日免检）                    ││   │
@@ -505,16 +505,16 @@
 │  │  │  │  环境变量：LLM_API / LLM_MODEL / LLM_KEY   │    ││   │
 │  │  │  └───────────────────────────────────────────┘    ││   │
 │  │  │                                                     ││   │
-│  │  │  ┌─── TMS 反骚扰 ─────────────────────────────┐    ││   │
-│  │  │  │  腾讯云 TextModeration API 检测              │    ││   │
-│  │  │  │  Block → 拉黑 + 通知 + 信任归零              │    ││   │
-│  │  │  │  Review(≥阈值) → 拉黑 + 通知 + 信任归零     │    ││   │
-│  │  │  │  Pass → 当日信任计数+1                       │    ││   │
-│  │  │  │  毫秒级响应，远优于AI（1-5秒）               │    ││   │
-│  │  │  │  配置开关：enable_tencent_tms               │    ││   │
+│  │  │  ┌─── Green 反骚扰 ───────────────────────────┐    ││   │
+│  │  │  │  阿里云 Green TextModerationPlus 检测       │    ││   │
+│  │  │  │  high → 拉黑 + 通知 + 信任归零              │    ││   │
+│  │  │  │  medium(≥Confidence阈值) → 拉黑+通知+归零   │    ││   │
+│  │  │  │  low/none → 当日信任计数+1                   │    ││   │
+│  │  │  │  响应约0.2-1.5秒，支持119种语言              │    ││   │
+│  │  │  │  配置开关：enable_aliyun_green              │    ││   │
 │  │  │  └───────────────────────────────────────────┘    ││   │
 │  │  │                                                     ││   │
-│  │  │  互斥规则：开启TMS自动关闭AI，反之亦然              ││   │
+│  │  │  互斥规则：开启Green自动关闭AI，反之亦然            ││   │
 │  │  └───────────────────────────────────────────────────┘│   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
@@ -775,9 +775,9 @@
 │  ├── [AiAntiHarassment] LLM API call failed  # AI API失败  │
 │  └── [AiAntiHarassment] User promoted        # AI信任晋升    │
 │                                                             │
-│  src/security/tmsAntiHarassment.js                            │
-│  ├── [TmsAntiHarassment] TMS API call failed # TMS API失败  │
-│  └── [TmsAntiHarassment] User promoted       # TMS信任晋升   │
+│  src/security/greenAntiHarassment.js                          │
+│  ├── [GreenAntiHarass] Green API call failed # Green API失败│
+│  └── [GreenAntiHarass] User promoted       # Green信任晋升   │
 │                                                             │
 │  查看日志命令：                                               │
 │  $ wrangler tail                                            │

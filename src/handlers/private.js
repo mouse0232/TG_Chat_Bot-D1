@@ -18,7 +18,7 @@ import { hasLock, setLock } from '../utils/cache.js';
 import { safeRegexTest } from '../security/regexGuard.js';
 import { checkUser, handleUserIntercept, checkMessage, handleMessageIntercept } from '../security/antiHarassment.js';
 import { checkAiSpam, handleAiSpamIntercept, handleAiCleanPass } from '../security/aiAntiHarassment.js';
-import { checkTmsSpam, handleTmsSpamIntercept, handleTmsCleanPass } from '../security/tmsAntiHarassment.js';
+import { checkGreenSpam, handleGreenSpamIntercept, handleGreenCleanPass } from '../security/greenAntiHarassment.js';
 import { checkAllPermissions, formatPermissionReport } from '../services/permissionCheck.js';
 import { log } from '../utils/logger.js';
 
@@ -269,26 +269,26 @@ async function handleVerifiedMsg(msg, u, env, ctx) {
     return;
   }
 
-  const tmsEnabled = await getBoolConfig("enable_tencent_tms", env);
+  const greenEnabled = await getBoolConfig("enable_aliyun_green", env);
   const aiEnabled = await getBoolConfig("enable_ai_anti_harassment", env);
 
-  if (tmsEnabled) {
-    const tmsCheck = await checkTmsSpam(msg, u, env);
-    if (tmsCheck.spam) {
-      await handleTmsSpamIntercept(id, msg.from, tmsCheck.reason, tmsCheck.label, tmsCheck.score, env);
+  if (greenEnabled) {
+    const greenCheck = await checkGreenSpam(msg, u, env);
+    if (greenCheck.spam) {
+      await handleGreenSpamIntercept(id, msg.from, greenCheck.reason, greenCheck.riskLevel, greenCheck.labels, env);
       return;
     }
-    if (!tmsCheck.skipped && !tmsCheck.error) {
-      const promoted = await handleTmsCleanPass(id, env);
+    if (!greenCheck.skipped && !greenCheck.error) {
+      const promoted = await handleGreenCleanPass(id, env);
       if (promoted) {
-        const notify = await getBoolConfig("tencent_tms_notify_auto_whitelist", env);
+        const notify = await getBoolConfig("aliyun_green_notify_auto_whitelist", env);
         if (notify && env.ADMIN_GROUP_ID) {
           const senderName = msg.from?.first_name || 'Unknown';
-          const threshold = await getConfig("tencent_tms_trust_threshold", env) || 3;
+          const threshold = await getConfig("aliyun_green_trust_threshold", env) || 3;
           await api(env.BOT_TOKEN, "sendMessage", {
             chat_id: env.ADMIN_GROUP_ID,
-            text: `\u2705 \u7528\u6237 ${senderName} \u5F53\u65E5\u8FDE\u7EED\u901A\u8FC7 ${threshold} \u6B21 TMS \u68C0\u6D4B\uFF0C\u5DF2\u52A0\u5165\u4FE1\u4EFB\u5217\u8868\uFF08\u5F53\u65E5\u514D\u68C0\uFF09`
-          }).catch(e => log.debug('Private', 'send tms whitelist notify failed', { error: e?.message || String(e) }));
+            text: `用户 ${senderName} 当日连续通过 ${threshold} 次 Green 检测，已加入信任列表（当日免检）`
+          }).catch(e => log.debug('Private', 'send green whitelist notify failed', { error: e?.message || String(e) }));
         }
       }
     }

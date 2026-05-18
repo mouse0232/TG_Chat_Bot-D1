@@ -42,18 +42,19 @@ src/
 │   ├── backup.js            # 备份
 │   ├── infoCard.js          # 资料卡
 │   └── verification.js      # 验证服务
-├── security/                # 安全层（11 个模块）
+├── security/                # 安全层（12 个模块）
 │   ├── webhook.js           # Webhook 校验
 │   ├── rateLimit.js          # 限流
 │   ├── idempotency.js        # 幂等去重
 │   ├── initData.js           # initData 验签
 │   ├── regexGuard.js         # ReDoS 防护
 │   ├── cleanup.js            # TTL 清理
+│   ├── connectivityCheck.js  # AI/Green 连通性检测
 │   ├── antiHarassment.js     # 本地反骚扰检测
 │   ├── aiAntiHarassment.js   # AI 反骚扰检测
 │   ├── aiSpamPrompt.js       # LLM 提示词模板
-│   ├── tmsAntiHarassment.js  # TMS 反骚扰检测
-│   └── tencentTms.js         # TMS API 签名+调用
+│   ├── greenAntiHarassment.js# Green 反骚扰检测
+│   └── aliyunGreen.js        # Green API 签名+调用
 ├── database/                # 数据层（7 个模块）
 │   ├── index.js              # DB 初始化
 │   ├── config.js             # 配置操作
@@ -113,7 +114,7 @@ src/
 - **Update 幂等去重**：防止重复处理
 - **ReDoS 防护**：正则表达式安全检测
 - **TTL 自动清理**：过期数据自动清理
-- **AI 反骚扰 fail-open**：LLM 不可用时放行消息，不误杀
+- **智能检测 fail-open**：AI/Green 不可用时放行消息，不误杀
 
 ### 9. 本地反骚扰检测
 - **用户身份检测**：拦截机器人账号（is_bot）和空用户名用户，提示"不符合聊天对象"，不拉黑
@@ -128,6 +129,16 @@ src/
 - **与黑白名单解耦**：信任列表仅控制是否跳过检测，与项目黑名单（is_blocked）完全独立
 - **fail-open 策略**：AI 不可用或超时时放行消息，不误杀
 - **管理员命令**：`/trust` 加入信任列表，`/untrust` 移出
+
+### 11. Green 反骚扰检测（阿里云内容安全）
+- **大模型文本审核**：调用阿里云内容安全增强版出海版（ugc_moderation_byllm_cb），支持 119 种语言
+- **地域新加坡**：专为出海场景设计，境外可用
+- **多维度风险标签**：色情、暴恐、涉政、种族主义、赌博、毒品、辱骂、引流广告等
+- **RiskLevel 拦截**：high 直接拦截，medium 根据 Confidence 阈值决定，low/none 放行
+- **信任列表共享**：与 AI 反骚扰共享同一套 user_trust 表，切换不影响信任数据
+- **与 AI 互斥**：只能二选一，开启 Green 自动关闭 AI
+- **fail-open 策略**：Green 不可用时放行消息，不误杀
+- **连通性检测**：开启前自动验证密钥、签名、端点可达
 
 ---
 
@@ -186,10 +197,15 @@ src/
    | `RECAPTCHA_SITE_KEY` | `6LAAAA...` | Google reCAPTCHA v2 站点密钥 |
    | `RECAPTCHA_SECRET_KEY` | `6LAAAA...` | Google reCAPTCHA v2 密钥 |
    | `TELEGRAM_WEBHOOK_SECRET` | `mRD0p7...` | 随机字符串（用于 Webhook 校验）|
-   | `LLM_API` | `https://api.openai.com/v1` | LLM API Base URL（AI反骚扰可选）|
-   | `LLM_MODEL` | `gpt-4o-mini` | LLM 模型名称（AI反骚扰可选）|
-    | `LLM_KEY` | `sk-...` | LLM API Key（用 wrangler secret put 设置）|
-    | `LLM_TIMEOUT_MS` | `5000` | LLM API 超时（毫秒，可选）|
+| `LLM_API` | `https://api.openai.com/v1` | LLM API Base URL（AI反骚扰可选）|
+    | `LLM_MODEL` | `gpt-4o-mini` | LLM 模型名称（AI反骚扰可选）|
+     | `LLM_KEY` | `sk-...` | LLM API Key（用 wrangler secret put 设置）|
+     | `LLM_TIMEOUT_MS` | `5000` | LLM API 超时（毫秒，可选）|
+     | `ALIYUN_ACCESS_KEY_ID` | `LTAI5t...` | 阿里云 AccessKey ID（Green反骚扰可选，用 wrangler secret put 设置）|
+     | `ALIYUN_ACCESS_KEY_SECRET` | `xxx...` | 阿里云 AccessKey Secret（Green反骚扰可选，用 wrangler secret put 设置）|
+     | `ALIYUN_GREEN_REGION` | `ap-southeast-1` | Green API 地域（可选，默认新加坡）|
+     | `ALIYUN_GREEN_SERVICE` | `ugc_moderation_byllm_cb` | 检测服务类型（可选，默认出海版）|
+     | `ALIYUN_GREEN_TIMEOUT_MS` | `5000` | Green API 超时（毫秒，可选）|
 
 7. **设置 Webhook**
    在浏览器地址栏输入：
@@ -272,7 +288,8 @@ npm run deploy
 | `点击配置菜单出现 ERROR` | D1 数据库未绑定或变量名错误 | 1. 检查绑定变量名是否为 `TG_BOT_DB`（大小写敏感）<br>2. 确认数据库已正确创建<br>3. 首次访问会自动建表，无需手动执行 SQL |
 | `点击配置菜单无反应` | D1 数据库配置错误 | 1. 重新绑定数据库<br>2. 检查 Worker 代码是否包含最新 D1 初始化逻辑 |
 | `AI 检测不工作` | LLM 环境变量未配置 | 1. 检查 `LLM_API`/`LLM_MODEL`/`LLM_KEY` 是否配置<br>2. 确认管理面板中 AI 反骚扰总开关已开启<br>3. 检查 `LLM_KEY` 是否有效（用 curl 测试）|
-| `AI 和 TMS 同时开启` | 互斥控制 | 开启其中一个时系统自动关闭另一个，管理面板也有互斥校验 |
+| `Green 检测不工作` | 阿里云环境变量未配置 | 1. 检查 `ALIYUN_ACCESS_KEY_ID/SECRET` 是否配置<br>2. 确认管理面板中 Green 反骚扰总开关已开启<br>3. 点击"检测连通性"验证 API 可达|
+| `AI 和 Green 同时开启` | 互斥控制 | 开启其中一个时系统自动关闭另一个，管理面板也有互斥校验 |
 
 ---
 

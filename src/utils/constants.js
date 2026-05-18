@@ -74,7 +74,12 @@ export const DEFAULTS = {
   enable_tencent_tms: "false",
   tencent_tms_trust_threshold: "3",
   tencent_tms_review_block_threshold: "60",
-  tencent_tms_notify_auto_whitelist: "true"
+  tencent_tms_notify_auto_whitelist: "true",
+
+  enable_aliyun_green: "false",
+  aliyun_green_trust_threshold: "3",
+  aliyun_green_medium_block_threshold: "80",
+  aliyun_green_notify_auto_whitelist: "true"
 };
 
 // 已送达 reaction

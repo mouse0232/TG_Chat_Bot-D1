@@ -33,7 +33,13 @@ tg-chat-bot-d1/
 │   │   ├── idempotency.js       # 幂等去重
 │   │   ├── initData.js          # initData 验签
 │   │   ├── regexGuard.js        # ReDoS 防护
-│   │   └── cleanup.js           # 清理调度
+│   │   ├── cleanup.js           # 清理调度
+│   │   ├── connectivityCheck.js # AI/Green 连通性检测
+│   │   ├── antiHarassment.js    # 本地反骚扰检测
+│   │   ├── aiAntiHarassment.js  # AI 反骚扰检测
+│   │   ├── aiSpamPrompt.js      # LLM 提示词模板
+│   │   ├── greenAntiHarassment.js # Green 反骚扰检测
+│   │   └── aliyunGreen.js       # Green API 签名+调用
 │   ├── database/                # 数据层
 │   │   ├── index.js             # DB 初始化
 │   │   ├── config.js            # 配置操作
@@ -92,6 +98,15 @@ npm run deploy
 | `RECAPTCHA_SITE_KEY` | Google reCAPTCHA 站点密钥 |
 | `RECAPTCHA_SECRET_KEY` | Google reCAPTCHA 密钥 |
 | `TELEGRAM_WEBHOOK_SECRET` | Webhook 密钥 |
+| `LLM_API` | LLM API Base URL（AI反骚扰可选）|
+| `LLM_MODEL` | LLM 模型名称（AI反骚扰可选）|
+| `LLM_KEY` | LLM API Key（AI反骚扰）|
+| `LLM_TIMEOUT_MS` | LLM API 超时毫秒数（可选）|
+| `ALIYUN_ACCESS_KEY_ID` | 阿里云 AccessKey ID（Green反骚扰）|
+| `ALIYUN_ACCESS_KEY_SECRET` | 阿里云 AccessKey Secret（Green反骚扰）|
+| `ALIYUN_GREEN_REGION` | Green API 地域（可选，默认新加坡）|
+| `ALIYUN_GREEN_SERVICE` | 检测服务类型（可选，默认出海版）|
+| `ALIYUN_GREEN_TIMEOUT_MS` | Green API 超时毫秒数（可选）|
 
 ## 功能清单
 
@@ -114,10 +129,15 @@ npm run deploy
 - [x] 协管权限系统
 - [x] ReDoS 防护
 - [x] TTL 清理
+- [x] AI 反骚扰检测（LLM 语义检测）
+- [x] Green 反骚扰检测（阿里云内容安全出海版）
+- [x] AI 与 Green 互斥切换
+- [x] 信任列表系统（共享 AI/Green）
+- [x] 连通性检测（开启前验证 API 可达）
 
 ## 架构特点
 
-1. **模块化**：35 个模块，职责单一
+1. **模块化**：40+ 个模块，职责单一
 2. **可测试**：模块间解耦，支持独立测试
 3. **可扩展**：新增功能无需修改现有代码
 4. **安全**：多层安全防护（Webhook、限流、幂等、ReDoS）
