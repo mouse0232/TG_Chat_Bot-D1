@@ -197,15 +197,15 @@ src/
    | `RECAPTCHA_SITE_KEY` | `6LAAAA...` | Google reCAPTCHA v2 站点密钥 |
    | `RECAPTCHA_SECRET_KEY` | `6LAAAA...` | Google reCAPTCHA v2 密钥 |
    | `TELEGRAM_WEBHOOK_SECRET` | `mRD0p7...` | 随机字符串（用于 Webhook 校验）|
-| `LLM_API` | `https://api.openai.com/v1` | LLM API Base URL（AI反骚扰可选）|
-    | `LLM_MODEL` | `gpt-4o-mini` | LLM 模型名称（AI反骚扰可选）|
-     | `LLM_KEY` | `sk-...` | LLM API Key（用 wrangler secret put 设置）|
-     | `LLM_TIMEOUT_MS` | `5000` | LLM API 超时（毫秒，可选）|
-     | `ALIYUN_ACCESS_KEY_ID` | `LTAI5t...` | 阿里云 AccessKey ID（Green反骚扰可选，用 wrangler secret put 设置）|
-     | `ALIYUN_ACCESS_KEY_SECRET` | `xxx...` | 阿里云 AccessKey Secret（Green反骚扰可选，用 wrangler secret put 设置）|
-     | `ALIYUN_GREEN_REGION` | `ap-southeast-1` | Green API 地域（可选，默认新加坡）|
-     | `ALIYUN_GREEN_SERVICE` | `ugc_moderation_byllm_cb` | 检测服务类型（可选，默认出海版）|
-     | `ALIYUN_GREEN_TIMEOUT_MS` | `5000` | Green API 超时（毫秒，可选）|
+   | `LLM_API` | `https://api.openai.com/v1` | LLM API Base URL（AI反骚扰可选）|
+   | `LLM_MODEL` | `gpt-4o-mini` | LLM 模型名称（AI反骚扰可选）|
+   | `LLM_KEY` | `sk-...` | LLM API Key（用 wrangler secret put 设置）|
+   | `LLM_TIMEOUT_MS` | `5000` | LLM API 超时（毫秒，可选）|
+   | `ALIYUN_ACCESS_KEY_ID` | `LTAI5t...` | 阿里云 AccessKey ID（Green反骚扰可选，用 wrangler secret put 设置）|
+   | `ALIYUN_ACCESS_KEY_SECRET` | `xxx...` | 阿里云 AccessKey Secret（Green反骚扰可选，用 wrangler secret put 设置）|
+   | `ALIYUN_GREEN_REGION` | `ap-southeast-1` | Green API 地域（可选，默认新加坡）|
+   | `ALIYUN_GREEN_SERVICE` | `ugc_moderation_byllm_cb` | 检测服务类型（可选，默认出海版）|
+   | `ALIYUN_GREEN_TIMEOUT_MS` | `5000` | Green API 超时（毫秒，可选）|
 
 7. **设置 Webhook**
    在浏览器地址栏输入：
