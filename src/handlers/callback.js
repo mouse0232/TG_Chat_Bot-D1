@@ -6,10 +6,11 @@
 import { api } from '../api/telegram.js';
 import { getConfig, setConfig } from '../database/config.js';
 import { getUser, updateUser } from '../database/users.js';
+import { resetUserTrust } from '../database/trust.js';
 import { isAuthAdmin, isPrimaryAdmin } from '../utils/cache.js';
 import { manageBlacklist } from '../services/blacklist.js';
 import { handleAdminConfig } from './adminConfig.js';
-import { log } from '../utils/logger.js';
+import { log, logError } from '../utils/logger.js';
 
 /**
  * 处理回调查询
@@ -78,5 +79,69 @@ export async function handleCallback(cb, env) {
       message_thread_id: msg.message_thread_id 
     }).catch(e => log.warn('Callback', 'pin message failed', { error: e?.message || String(e) }));
     api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "已置顶" }).catch(e => log.debug('Callback', 'answer callback query failed', { error: e?.message || String(e) }));
+  }
+
+  if (act === "ai_correction") {
+    const userId = p1;
+    const msgHash = p2;
+    const correctResult = (data || "").split(":")[3];
+    
+    if (!(await isAuthAdmin(from.id, env))) {
+      return api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "无权", show_alert: true }).catch(e => log.debug('Callback', 'answer callback query failed', { error: e?.message || String(e) }));
+    }
+
+    await api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id }).catch(() => {});
+
+    try {
+      const u = await getUser(userId, env);
+      const originalMsg = u.user_info?.ai_spam_reason || "未知消息";
+
+      if (env.ENABLE_MEMOBASE === 'true') {
+        try {
+          const { createMemobaseService } = await import('../services/memobase.js');
+          const memobase = createMemobaseService(env);
+          await memobase.insertGlobalCorrection(originalMsg, correctResult, `管理员 ${from.id} 纠正`);
+        } catch (e) {
+          logError('AiCorrection', 'Memobase failed', e);
+        }
+      }
+
+      if (correctResult === 'CLEAN') {
+        await updateUser(userId, { is_blocked: false }, env);
+        await api(env.BOT_TOKEN, "editMessageReplyMarkup", {
+          chat_id: env.ADMIN_GROUP_ID,
+          message_id: msg.message_id,
+          reply_markup: { inline_keyboard: [[{ text: '✅ 已纠正: 误判放行 (CLEAN)', callback_data: 'none' }]] }
+        }).catch(() => {});
+
+        const learnHint = env.ENABLE_MEMOBASE === 'true' 
+          ? '\n\nAI 将学习此次纠正，避免同类误判。' 
+          : '\n\n(长期记忆未开启，仅执行本地解封操作)';
+
+        await api(env.BOT_TOKEN, "sendMessage", {
+          chat_id: env.ADMIN_GROUP_ID,
+          text: `✅ 误判纠正已生效\n\n用户 ID: ${userId}\n结果: 解除黑名单，恢复正常聊天${learnHint}`
+        }).catch(() => {});
+      } else if (correctResult === 'SPAM') {
+        await resetUserTrust(userId, env);
+        await api(env.BOT_TOKEN, "editMessageReplyMarkup", {
+          chat_id: env.ADMIN_GROUP_ID,
+          message_id: msg.message_id,
+          reply_markup: { inline_keyboard: [[{ text: '❌ 已确认: 确认为 SPAM', callback_data: 'none' }]] }
+        }).catch(() => {});
+
+        const learnHint = env.ENABLE_MEMOBASE === 'true' 
+          ? '\n\nAI 将学习此次纠正，下次将正确拦截。' 
+          : '\n\n(长期记忆未开启，仅执行信任度清零)';
+
+        await api(env.BOT_TOKEN, "sendMessage", {
+          chat_id: env.ADMIN_GROUP_ID,
+          text: `❌ 漏判纠正已生效\n\n用户 ID: ${userId}\n结果: 信任度清零，重新进入检测流程${learnHint}`
+        }).catch(() => {});
+      }
+    } catch (error) {
+      logError('AiCorrection', 'handleAiCorrection failed', error);
+      await api(env.BOT_TOKEN, "answerCallbackQuery", { callback_query_id: cb.id, text: "纠正失败", show_alert: true }).catch(() => {});
+    }
   }
 }

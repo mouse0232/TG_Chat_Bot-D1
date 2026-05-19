@@ -110,3 +110,16 @@ export async function untrustUser(userId, env) {
     logError('DB', 'untrustUser failed', e, { userId });
   }
 }
+
+export async function resetUserTrust(userId, env) {
+  try {
+    const db = env.TG_BOT_DB;
+    const today = getTodayDateStr();
+    await db.prepare(
+      'UPDATE user_trust SET trust_status = ?, consecutive_clean_count = 0, last_clean_date = ?, whitelisted_at = NULL, whitelisted_by = NULL WHERE user_id = ?'
+    ).bind('monitoring', today, userId).run();
+    log.info('DB', 'resetUserTrust executed', { userId });
+  } catch (e) {
+    logError('DB', 'resetUserTrust failed', e, { userId });
+  }
+}

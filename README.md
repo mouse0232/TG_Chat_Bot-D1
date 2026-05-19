@@ -140,6 +140,13 @@ src/
 - **fail-open 策略**：Green 不可用时放行消息，不误杀
 - **连通性检测**：开启前自动验证密钥、签名、端点可达
 
+### 12. AI 长期记忆 (Memobase)
+- **全局模式泛化**：A 用户的纠正经验自动应用于 B 用户的检测
+- **误判纠正**：AI 错误拦截时，管理员点击"放行"自动解除黑名单并记录经验
+- **漏判纠正**：AI 漏放垃圾信息时，管理员标记后触发"信任熔断"并记录特征
+- **自动抽象**：Memobase 自动将具体纠正提炼为通用规则，不会撑爆 Prompt
+- **兼容任意模型**：记忆服务独立，可继续使用自有的 OpenAI/Claude/本地模型
+
 ---
 
 ## 部署指南
@@ -205,7 +212,10 @@ src/
    | `ALIYUN_ACCESS_KEY_SECRET` | `xxx...` | 阿里云 AccessKey Secret（Green反骚扰可选，用 wrangler secret put 设置）|
    | `ALIYUN_GREEN_REGION` | `ap-southeast-1` | Green API 地域（可选，默认新加坡）|
    | `ALIYUN_GREEN_SERVICE` | `ugc_moderation_byllm_cb` | 检测服务类型（可选，默认出海版）|
-   | `ALIYUN_GREEN_TIMEOUT_MS` | `5000` | Green API 超时（毫秒，可选）|
+    | `ALIYUN_GREEN_TIMEOUT_MS` | `5000` | Green API 超时（毫秒，可选）|
+    | `ENABLE_MEMOBASE` | `true` | 启用 Memobase 长期记忆（可选）|
+    | `MEMOBASE_API_KEY` | `sk-...` | 302.AI API Key（长期记忆，用 wrangler secret put 设置）|
+    | `MEMOBASE_TIMEOUT_MS` | `3000` | Memobase API 超时（毫秒，可选）|
 
 7. **设置 Webhook**
    在浏览器地址栏输入：

@@ -27,10 +27,38 @@ export async function checkAiSpam(msg, user, env) {
 
   const senderName = `${msg.from?.first_name || ''}${msg.from?.last_name ? ' ' + msg.from.last_name : ''}`.trim() || 'Unknown';
   const truncatedText = text.substring(0, 512);
+
+  let enhancedSystemPrompt = SPAM_SYSTEM_PROMPT;
+
+  if (env.ENABLE_MEMOBASE === 'true') {
+    try {
+      const { createMemobaseService } = await import('../services/memobase.js');
+      const { enhanceSystemPrompt } = await import('./aiMemoryPrompt.js');
+      const memobase = createMemobaseService(env);
+      
+      const memoryContext = await memobase.getGlobalContext();
+      enhancedSystemPrompt = enhanceSystemPrompt(SPAM_SYSTEM_PROMPT, memoryContext);
+    } catch (e) {
+      logError('AiAntiHarass', 'Memory module failed, using fallback', e);
+    }
+  }
+
   const userPrompt = fillPromptTemplate(SPAM_USER_PROMPT_TEMPLATE, { senderName, messageText: truncatedText });
 
   try {
-    const judgment = await callLlmApi(env, SPAM_SYSTEM_PROMPT, userPrompt);
+    const judgment = await callLlmApi(env, enhancedSystemPrompt, userPrompt);
+    
+    if (env.ENABLE_MEMOBASE === 'true') {
+      try {
+        const { createMemobaseService } = await import('../services/memobase.js');
+        const memobase = createMemobaseService(env);
+        memobase.recordUserJudgment(user.user_id, msg, { 
+          spam: judgment.startsWith('SPAM'), 
+          reason: judgment.replace(/^SPAM:\s*/, '').trim() 
+        }).catch(() => {});
+      } catch {}
+    }
+
     if (judgment.startsWith('SPAM')) {
       const reason = judgment.replace(/^SPAM:\s*/, '').trim() || 'AI检测为垃圾信息';
       return { spam: true, reason, skipped: false };
@@ -102,10 +130,17 @@ export async function handleAiSpamIntercept(userId, userInfo, reason, env) {
       const timeStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')}`;
       const senderName = `${userInfo?.first_name || ''}${userInfo?.last_name ? ' ' + userInfo.last_name : ''}`.trim() || 'Unknown';
       const uname = userInfo?.username ? ` (@${userInfo.username})` : '';
+      const msgHash = `${userId}_${Date.now()}`;
       await api(env.BOT_TOKEN, "sendMessage", {
         chat_id: env.ADMIN_GROUP_ID,
         text: `🚨 AI 垃圾信息警告\n\n发送者: ${senderName}${uname} (ID: ${userId})\nAI 判定: SPAM:${reason}\n时间: ${timeStr}`,
-        parse_mode: "HTML"
+        parse_mode: "HTML",
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '✅ 误判，放行 (CLEAN)', callback_data: `ai_correction:${userId}:${msgHash}:CLEAN` },
+            { text: '❌ 确认为 SPAM', callback_data: `ai_correction:${userId}:${msgHash}:SPAM` }
+          ]]
+        }
       }).catch(e => log.debug('AiAntiHarass', 'Notification skipped', { userId, error: e?.message }));
     }
   } catch (error) {
