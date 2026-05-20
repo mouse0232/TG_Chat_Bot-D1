@@ -144,8 +144,8 @@ src/
 - **全局模式泛化**：A 用户的纠正经验自动应用于 B 用户的检测
 - **误判纠正**：AI 错误拦截时，管理员点击"放行"自动解除黑名单并记录经验
 - **漏判纠正**：AI 漏放垃圾信息时，管理员标记后触发"信任熔断"并记录特征
-- **自动抽象**：Memobase 自动将具体纠正提炼为通用规则，不会撑爆 Prompt
-- **兼容任意模型**：记忆服务独立，可继续使用自有的 OpenAI/Claude/本地模型
+- **自动抽象**：利用 LLM 自动总结提炼规则，不撑爆 Prompt，举一反三效果好
+- **完全可控**：基于 D1 数据库自建记忆层，不依赖第三方服务，随时开关
 
 ---
 
@@ -215,6 +215,7 @@ src/
     | `ALIYUN_GREEN_TIMEOUT_MS` | `5000` | Green API 超时（毫秒，可选）|
     | `ENABLE_MEMOBASE` | `true` | 启用 Memobase 长期记忆（可选）|
     | `MEMOBASE_API_KEY` | `sk-...` | 302.AI API Key（长期记忆，用 wrangler secret put 设置）|
+    | `ENABLE_AI_MEMORY` | `true` | 启用长期记忆功能（默认 true，跟随 AI 开关自动生效）|
     | `MEMOBASE_TIMEOUT_MS` | `3000` | Memobase API 超时（毫秒，可选）|
 
 7. **设置 Webhook**

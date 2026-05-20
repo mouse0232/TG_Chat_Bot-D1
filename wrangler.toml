@@ -20,6 +20,10 @@ database_id = "95fa01fc-0dcc-40bb-9d88-09d1ad2d336c"
 # RECAPTCHA_SECRET_KEY = "your-recaptcha-secret-key"
 # TELEGRAM_WEBHOOK_SECRET = "your-webhook-secret"
 
+# Cron 触发器 - 每 6 小时执行一次 AI 记忆总结
+[triggers]
+crons = ["0 */6 * * *"]
+
 # 日志收集和追踪配置
 [observability]
 enabled = true

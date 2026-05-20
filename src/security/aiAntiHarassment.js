@@ -30,14 +30,10 @@ export async function checkAiSpam(msg, user, env) {
 
   let enhancedSystemPrompt = SPAM_SYSTEM_PROMPT;
 
-  if (env.ENABLE_MEMOBASE === 'true') {
+  if (env.ENABLE_AI_MEMORY !== 'false') {
     try {
-      const { createMemobaseService } = await import('../services/memobase.js');
-      const { enhanceSystemPrompt } = await import('./aiMemoryPrompt.js');
-      const memobase = createMemobaseService(env);
-      
-      const memoryContext = await memobase.getGlobalContext();
-      enhancedSystemPrompt = enhanceSystemPrompt(SPAM_SYSTEM_PROMPT, memoryContext);
+      const { buildPromptWithMemory } = await import('../services/aiMemory.js');
+      enhancedSystemPrompt = await buildPromptWithMemory(SPAM_SYSTEM_PROMPT, env);
     } catch (e) {
       logError('AiAntiHarass', 'Memory module failed, using fallback', e);
     }
@@ -48,17 +44,6 @@ export async function checkAiSpam(msg, user, env) {
   try {
     const judgment = await callLlmApi(env, enhancedSystemPrompt, userPrompt);
     
-    if (env.ENABLE_MEMOBASE === 'true') {
-      try {
-        const { createMemobaseService } = await import('../services/memobase.js');
-        const memobase = createMemobaseService(env);
-        memobase.recordUserJudgment(user.user_id, msg, { 
-          spam: judgment.startsWith('SPAM'), 
-          reason: judgment.replace(/^SPAM:\s*/, '').trim() 
-        }).catch(() => {});
-      } catch {}
-    }
-
     if (judgment.startsWith('SPAM')) {
       const reason = judgment.replace(/^SPAM:\s*/, '').trim() || 'AI检测为垃圾信息';
       return { spam: true, reason, skipped: false };

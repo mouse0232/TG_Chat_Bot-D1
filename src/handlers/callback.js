@@ -95,14 +95,14 @@ export async function handleCallback(cb, env) {
     try {
       const u = await getUser(userId, env);
       const originalMsg = u.user_info?.ai_spam_reason || "未知消息";
+      const originalJudgment = "SPAM"; // Always intercepted as SPAM initially
 
-      if (env.ENABLE_MEMOBASE === 'true') {
+      if (env.ENABLE_AI_MEMORY !== 'false') {
         try {
-          const { createMemobaseService } = await import('../services/memobase.js');
-          const memobase = createMemobaseService(env);
-          await memobase.insertGlobalCorrection(originalMsg, correctResult, `管理员 ${from.id} 纠正`);
+          const { addCorrection } = await import('../services/aiMemory.js');
+          await addCorrection(userId, originalMsg, originalJudgment, correctResult, `管理员 ${from.id} 纠正`, env);
         } catch (e) {
-          logError('AiCorrection', 'Memobase failed', e);
+          logError('AiCorrection', 'AiMemory failed', e);
         }
       }
 
@@ -114,7 +114,7 @@ export async function handleCallback(cb, env) {
           reply_markup: { inline_keyboard: [[{ text: '✅ 已纠正: 误判放行 (CLEAN)', callback_data: 'none' }]] }
         }).catch(() => {});
 
-        const learnHint = env.ENABLE_MEMOBASE === 'true' 
+        const learnHint = env.ENABLE_AI_MEMORY !== 'false'
           ? '\n\nAI 将学习此次纠正，避免同类误判。' 
           : '\n\n(长期记忆未开启，仅执行本地解封操作)';
 
@@ -130,7 +130,7 @@ export async function handleCallback(cb, env) {
           reply_markup: { inline_keyboard: [[{ text: '❌ 已确认: 确认为 SPAM', callback_data: 'none' }]] }
         }).catch(() => {});
 
-        const learnHint = env.ENABLE_MEMOBASE === 'true' 
+        const learnHint = env.ENABLE_AI_MEMORY !== 'false'
           ? '\n\nAI 将学习此次纠正，下次将正确拦截。' 
           : '\n\n(长期记忆未开启，仅执行信任度清零)';
 

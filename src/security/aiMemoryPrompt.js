@@ -1,16 +1,36 @@
-export const MEMORY_CONTEXT_TEMPLATE = `
+/**
+ * Memory Prompt Templates
+ * Templates for injecting memory context into system prompts.
+ */
 
-## 🔴 历史纠正经验参考 (全局与个人)
-以下是该类型消息的历史判定经验及管理员纠正记录，请在判定时重点参考：
-{{memoryContext}}
+export const MEMORY_INJECT_TEMPLATE = `
 
-## 判定注意事项
-- 若记忆中包含"管理员确认是垃圾信息"的记录，请提高判定为 SPAM 的倾向。
-- 若记忆中包含"管理员确认非垃圾信息"的记录，请提高判定为 CLEAN 的倾向。
-- 记忆仅供参考，最终请结合当前消息内容进行独立判断。
+## 🔴 历史判定经验参考 (长期记忆)
+
+### 1. 通用判定规则 (由历史纠正提炼)
+以下规则基于过往管理员的纠正记录提炼，请作为重要参考依据：
+{{long_term_rules}}
+
+### 2. 近期人工纠正案例 (实时热数据)
+以下是最近管理员纠正的几条具体案例，请重点关注其模式特征：
+{{recent_corrections}}
+
+### 判定指导
+- 当遇到与上述规则或案例相似的消息特征（如关键词、句式、链接模式）时，请倾向于参考历史经验进行判定。
+- 保持独立分析，但需高度重视管理员的人工反馈权重。
 `;
 
-export function enhanceSystemPrompt(basePrompt, memoryContext) {
-  if (!memoryContext || memoryContext.trim() === '') return basePrompt;
-  return basePrompt + MEMORY_CONTEXT_TEMPLATE.replace('{{memoryContext}}', memoryContext);
-}
+export const SUMMARIZE_PROMPT_TEMPLATE = `你是一个资深的风控策略专家。请根据以下数据，更新并提炼一套通用的"垃圾信息 (SPAM) 判定规则"。
+
+## 现有规则库
+{{existing_rules}}
+
+## 新增管理员纠正记录 (原文 | AI 原判 | 正确结果 | 理由)
+{{new_corrections}}
+
+## 任务要求
+1. **融合与提炼**: 结合新记录，更新现有规则。如果新记录揭示了新的垃圾模式，请加入规则库。
+2. **通用化**: 规则必须是通用的判定逻辑（例如"包含诱导加群链接"），禁止包含具体用户的 ID 或具体某句话。
+3. **去重**: 如果新记录没有提供新价值，保持规则库不变。
+4. **格式**: 仅输出 Markdown 列表格式的规则文本，不要包含任何解释性前言或后语。
+5. **长度**: 控制在 500 字以内。`;

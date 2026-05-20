@@ -74,7 +74,25 @@ export async function dbInit(env) {
       whitelisted_by TEXT,
       last_message_at INTEGER,
       created_at INTEGER
-    )`)
+    )`),
+
+    env.TG_BOT_DB.prepare(`CREATE TABLE IF NOT EXISTS ai_corrections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      user_msg TEXT NOT NULL,
+      original_judgment TEXT NOT NULL,
+      correct_result TEXT NOT NULL,
+      reason TEXT,
+      is_summarized INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL
+    )`),
+
+    env.TG_BOT_DB.prepare(`CREATE TABLE IF NOT EXISTS ai_rules (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      content TEXT NOT NULL DEFAULT '',
+      updated_at INTEGER DEFAULT 0
+    )`),
+    env.TG_BOT_DB.prepare(`INSERT OR IGNORE INTO ai_rules (id, content, updated_at) VALUES (1, '', 0)`)
   ]);
 
   await ensureUserColumns(env);
