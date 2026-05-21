@@ -203,7 +203,8 @@ export default {
 | 文件路径 | 修改点 | 说明 |
 | :--- | :--- | :--- |
 | `src/security/aiAntiHarassment.js` | `checkAiSpam` | 调用 `buildPromptWithMemory` 获取增强 Prompt |
-| `src/handlers/callback.js` | 纠正回调处理 | 调用 `addCorrection` 写入 D1 |
+| `src/handlers/callback.js` | 纠正回调处理 | 处理拦截通知上的按钮点击（误判纠正） |
+| `src/handlers/adminReply.js` | 命令处理 | **新增 `/markspam` 命令**，处理回复消息的漏判纠正 |
 | `src/database/index.js` | `dbInit` | 增加新表的 `CREATE TABLE` 逻辑 |
 | `src/index.js` | `scheduled` | 接入 Cron 任务入口 |
 | `wrangler.toml` | `[triggers]` | 增加 Cron 配置 |
