@@ -9,8 +9,8 @@ import { getUserByTopicId } from '../database/users.js';
 import { isAuthAdmin } from '../utils/cache.js';
 import { safeParse } from '../utils/helpers.js';
 import { updateUser } from '../database/users.js';
-import { trustUser, untrustUser } from '../database/trust.js';
-import { log } from '../utils/logger.js';
+import { trustUser, untrustUser, resetUserTrust } from '../database/trust.js';
+import { log, logError } from '../utils/logger.js';
 
 /**
  * 处理管理员回复
@@ -20,6 +20,9 @@ import { log } from '../utils/logger.js';
 export async function handleAdminReply(msg, env) {
   if (!msg.message_thread_id || msg.from.is_bot || !(await isAuthAdmin(msg.from.id, env))) return;
 
+  const text = msg.text || "";
+
+  // 1. 处理状态机 (备注设置等)
   const stateStr = await getConfig(`admin_state:${msg.from.id}`, env);
   if (stateStr) {
     const state = safeParse(stateStr);
@@ -76,6 +79,55 @@ export async function handleAdminReply(msg, env) {
       message_thread_id: msg.message_thread_id,
       text: "⚠️ 用户已移出 AI 信任列表，重新进入 AI 检测"
     });
+  }
+
+  // 3. 处理漏判纠正命令 /markspam
+  if (text.toLowerCase() === '/markspam' && msg.reply_to_message) {
+    const replyMsg = msg.reply_to_message;
+    const targetUid = replyMsg.from?.id?.toString();
+    
+    // 确保回复的是有效用户消息且不是机器人自己的
+    if (targetUid && !replyMsg.from.is_bot) {
+      try {
+        const originalMsg = replyMsg.text || replyMsg.caption || "无文本内容";
+        
+        // 记录纠正 (Original: CLEAN -> Correct: SPAM)
+        if (env.ENABLE_AI_MEMORY !== 'false') {
+          try {
+            const { addCorrection } = await import('../services/aiMemory.js');
+            await addCorrection(targetUid, originalMsg, 'CLEAN', 'SPAM', `管理员在群组标记 (MsgID: ${replyMsg.message_id})`, env);
+          } catch (e) {
+            logError('AdminReply', 'AiMemory addCorrection failed', e);
+          }
+        }
+
+        // 信任熔断
+        await resetUserTrust(targetUid, env);
+        
+        // 拉黑用户
+        await updateUser(targetUid, { is_blocked: true }, env);
+        
+        // 删除垃圾消息
+        await api(env.BOT_TOKEN, "deleteMessage", { 
+          chat_id: msg.chat.id, 
+          message_id: replyMsg.message_id 
+        }).catch(() => {});
+
+        return api(env.BOT_TOKEN, "sendMessage", {
+          chat_id: msg.chat.id,
+          message_thread_id: msg.message_thread_id,
+          text: `🚫 **漏判纠正已生效**\n\n用户 ID: ${targetUid}\n结果: 信任度清零，已拉黑\nAI 将学习此次纠正，下次将正确拦截。`,
+          parse_mode: "Markdown"
+        });
+      } catch (e) {
+        logError('AdminReply', '/markspam failed', e);
+        return api(env.BOT_TOKEN, "sendMessage", { 
+          chat_id: msg.chat.id, 
+          message_thread_id: msg.message_thread_id, 
+          text: "❌ 纠正失败，请查看日志" 
+        });
+      }
+    }
   }
 
   try {
