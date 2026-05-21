@@ -61,8 +61,6 @@ export async function handleAdminReply(msg, env) {
   const uid = (await getUserByTopicId(msg.message_thread_id.toString(), env))?.user_id;
   if (!uid) return;
 
-  const text = msg.text || "";
-
   if (text === '/trust') {
     await trustUser(uid, 'admin', env);
     return api(env.BOT_TOKEN, "sendMessage", {
